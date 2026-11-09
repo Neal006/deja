@@ -1,4 +1,5 @@
 import { createServer, type IncomingHttpHeaders, type Server } from "node:http";
+import { gzipSync } from "node:zlib";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { StateStore } from "../src/decay/store.js";
@@ -201,5 +202,51 @@ describe("createProxy", () => {
     const res = await fetch(`http://127.0.0.1:${port}/v1/messages`, { method: "POST", body: "{}" });
     expect(res.headers.get("content-type")).toBe("text/event-stream");
     expect(await res.text()).toBe("event: a\ndata: 1\n\nevent: b\ndata: 2\n\n");
+  });
+
+  it("reports provider usage from a streamed response", async () => {
+    const sse =
+      'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":3,"cache_read_input_tokens":800,"cache_creation_input_tokens":40,"output_tokens":1}}}\n\n' +
+      'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":9}}\n\n';
+    const port0 = await listen(
+      createServer((_req, res) => {
+        res.writeHead(200, { "content-type": "text/event-stream" });
+        res.end(sse);
+      }),
+    );
+    const events: ProxyEvent[] = [];
+    const port = await listen(createProxy({ upstream: `http://127.0.0.1:${port0}`, onRequest: (e) => events.push(e) }));
+    const res = await fetch(`http://127.0.0.1:${port}/v1/messages`, { method: "POST", body: JSON.stringify(repeatedReads()) });
+    expect(await res.text()).toBe(sse);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(events).toHaveLength(1);
+    expect(events[0]!.usage).toEqual({ input: 3, cacheRead: 800, cacheWrite: 40, output: 9 });
+    expect(events[0]!.status).toBe(200);
+  });
+
+  it("decodes gzip responses for usage but relays the original bytes", async () => {
+    const json = '{"id":"m","usage":{"input_tokens":4,"output_tokens":2}}';
+    const gz = gzipSync(json);
+    const port0 = await listen(
+      createServer((_req, res) => {
+        res.writeHead(200, { "content-type": "application/json", "content-encoding": "gzip" });
+        res.end(gz);
+      }),
+    );
+    const events: ProxyEvent[] = [];
+    const port = await listen(createProxy({ upstream: `http://127.0.0.1:${port0}`, onRequest: (e) => events.push(e) }));
+    const res = await fetch(`http://127.0.0.1:${port}/v1/messages`, { method: "POST", body: "{\"messages\":[]}" });
+    // fetch transparently gunzips, proving the proxy relayed valid gzip.
+    expect(await res.text()).toBe(json);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(events[0]!.usage).toEqual({ input: 4, cacheRead: 0, cacheWrite: 0, output: 2 });
+  });
+
+  it("still reports the event when the upstream is unreachable", async () => {
+    const events: ProxyEvent[] = [];
+    const port = await listen(createProxy({ upstream: "http://127.0.0.1:1", onRequest: (e) => events.push(e) }));
+    await fetch(`http://127.0.0.1:${port}/v1/messages`, { method: "POST", body: "{\"messages\":[]}" });
+    expect(events).toHaveLength(1);
+    expect(events[0]!.usage).toBeUndefined();
   });
 });
