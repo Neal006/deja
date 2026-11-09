@@ -38,6 +38,13 @@ export const UNCACHED_BILLING: BillingConfig = {
   readMultiplier: 1,
 };
 
+/** OpenAI-style caching (Codex and friends): no write premium, 0.1x reads. */
+export const OPENAI_BILLING: BillingConfig = {
+  ...DEFAULT_BILLING,
+  writeMultiplier: 1,
+  readMultiplier: 0.1,
+};
+
 export function messageHash(m: Message): string {
   return createHash("sha1").update(JSON.stringify(m)).digest("base64");
 }
