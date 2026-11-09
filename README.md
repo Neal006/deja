@@ -194,6 +194,9 @@ They're estimates: tokens come from a fast local counter, and dollars from a mod
 **Does it work with Codex CLI?**
 Codex talks to the OpenAI Responses API, which deja supports. Point Codex's provider base URL at `http://127.0.0.1:8787/v1` after `deja start --upstream https://api.openai.com`, or try `deja run --openai -- codex`.
 
+**Can I use it in CI?**
+Yes. See [docs/ci.md](docs/ci.md) for headless runs and GitHub Actions.
+
 **Something looks off.**
 See [docs/troubleshooting.md](docs/troubleshooting.md), and run `deja doctor`.
 
