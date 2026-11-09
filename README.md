@@ -1,7 +1,7 @@
 # deja
 
 [![ci](https://github.com/Neal006/deja/actions/workflows/ci.yml/badge.svg)](https://github.com/Neal006/deja/actions/workflows/ci.yml)
-[![deja](https://img.shields.io/badge/deja---30.3%25%20input%20bill-8a2be2)](#the-problem-nobody-measures)
+[![deja](https://img.shields.io/badge/deja---30.4%25%20input%20bill-8a2be2)](#the-problem-nobody-measures)
 ![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
@@ -12,13 +12,15 @@ npx dejactx audit      # what did stale context cost you? (reads local history, 
 npx dejactx claude     # run Claude Code through deja
 ```
 
-On 48 real Claude Code sessions (2,740 API requests), replayed request by request with exact prompt-cache billing:
+On 48 real Claude Code sessions (2,779 API requests), replayed request by request with exact prompt-cache billing:
 
 | strategy | input bill | average prompt |
 |---|---|---|
-| as it happened | $202 | 87.6k tokens |
-| eager pruning (what context pruners do) | −14.1% | |
-| **deja** | **−31.0%** | **55.9k** |
+| as it happened | — | 88.8k tokens |
+| eager pruning (what context pruners do) | −14.1% | 52.6k |
+| **deja** | **−30.4%** | **57.2k** |
+
+([Full benchmarks and methodology](docs/benchmarks.md).)
 
 Run `npx dejactx audit` to get this table for your own history, and `npx dejactx audit --share` for a card you can post.
 
@@ -30,13 +32,13 @@ Every API request an agent makes resends the **entire** conversation. A 400-line
 
 Prompt caching makes those resends cheaper (0.1× price), but not free. They also fill the context window, which triggers lossy auto-compaction sooner.
 
-The obvious fix is to prune old tool output. **It backfires.** The prompt cache matches on an exact prefix, so editing an old message invalidates everything after it, and the whole tail is re-billed at 1.25×. Prune eagerly and you keep paying for cache rewrites. In the replay, eager pruning that waits 20 requests before pruning cost **28% more than doing nothing at all**:
+The obvious fix is to prune old tool output. **It backfires.** The prompt cache matches on an exact prefix, so editing an old message invalidates everything after it, and the whole tail is re-billed at 1.25×. Prune eagerly and you keep paying for cache rewrites. In the replay, eager pruning that waits 20 requests before pruning cost **26% more than doing nothing at all**:
 
 | output counts as stale after | eager pruning | deja |
 |---|---|---|
-| 5 requests | −14.1% | **−31.0%** |
-| 10 requests | +4.2% | **−26.9%** |
-| 20 requests | **+28.4%** | **−21.7%** |
+| 5 requests | −14.1% | **−30.4%** |
+| 10 requests | +3.1% | **−26.4%** |
+| 20 requests | **+26.0%** | **−21.1%** |
 
 (Reproduce with `npx dejactx audit --min-age 20`.)
 
