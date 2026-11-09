@@ -23,7 +23,7 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
     skipTools: skipToolsFromArgs(args),
   });
 
-  const env: NodeJS.ProcessEnv = { ...process.env, DEJA_ACTIVE: "1" };
+  const env: NodeJS.ProcessEnv = { ...process.env, DEJA_ACTIVE: "1", DEJA_PORT: String(proxy.port) };
   if (openai) {
     // Different agents read different variable names.
     env.OPENAI_BASE_URL = `${proxy.url}/v1`;
@@ -37,7 +37,7 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
     const launch = launchArgs(cmd, cmdArgs);
     const child = spawn(launch.command, launch.args, { stdio: "inherit", env, shell: launch.shell });
     child.on("error", (err) => {
-      process.stderr.write(`deja: could not start ${cmd}: ${err.message}\n`);
+      process.stderr.write(`${launchError(cmd, err)}\n`);
       resolve(127);
     });
     child.on("exit", (code, signal) => resolve(code ?? (signal ? 128 : 0)));
@@ -48,6 +48,18 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
   await new Promise<void>((resolve) => proxy.server.close(() => resolve()));
   process.stderr.write(`${summaryLine(proxy.tally, useColor(process.stderr))}\n`);
   return code;
+}
+
+/** A helpful message when the agent command cannot be started. */
+export function launchError(cmd: string, err: NodeJS.ErrnoException | Error): string {
+  if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+    const hint =
+      cmd === "claude"
+        ? "Install Claude Code with: npm i -g @anthropic-ai/claude-code (or set DEJA_CLAUDE_BIN)"
+        : `Is "${cmd}" installed and on your PATH?`;
+    return `deja: could not find "${cmd}". ${hint}`;
+  }
+  return `deja: could not start ${cmd}: ${err.message}`;
 }
 
 export function summaryLine(t: { requests: number; saved: number; usd: number }, color: boolean): string {
