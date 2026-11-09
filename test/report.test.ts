@@ -169,6 +169,14 @@ describe("stub re-runs", () => {
   });
 });
 
+describe("subagents", () => {
+  it("counts subagent sessions in the header", () => {
+    const r = aggregate([session(), session({ subagent: true })], { env: {} });
+    expect(r.subagents).toBe(1);
+    expect(renderAudit(r, false)).toContain("2 Claude Code sessions (1 of them subagents)");
+  });
+});
+
 describe("uncached reports", () => {
   it("say that nothing was cached", () => {
     const out = renderAudit(aggregate([session()], { env: {}, uncached: true }), false);

@@ -6,6 +6,8 @@ import { addBill, emptyBill, STRATEGIES, type Strategy, type StrategyBills } fro
 import type { SessionStat, TargetStat } from "./simulate.js";
 
 export interface AuditReport {
+  /** How many of the sessions were subagent transcripts. */
+  subagents: number;
   /** Billed as if the provider had no prompt cache. */
   uncached?: boolean;
   /** Model used for pricing. */
@@ -60,6 +62,7 @@ export function dominantModel(sessions: SessionStat[]): string | undefined {
 export function aggregate(sessions: SessionStat[], opts: AggregateOptions = {}): AuditReport {
   const model = opts.model ?? dominantModel(sessions);
   const r: AuditReport = {
+    subagents: 0,
     ...(opts.uncached ? { uncached: true } : {}),
     model,
     sessions: 0,
@@ -80,6 +83,7 @@ export function aggregate(sessions: SessionStat[], opts: AggregateOptions = {}):
   for (const s of sessions) {
     if (s.requests === 0) continue;
     r.sessions++;
+    if (s.subagent) r.subagents++;
     r.requests += s.requests;
     r.toolResults += s.toolResults;
     r.compressed += s.compressed;
@@ -155,7 +159,10 @@ function signed(fraction: number): string {
 export function renderAudit(r: AuditReport, color: boolean): string {
   const p = paint(color);
   const out: string[] = [];
-  out.push(`${p.magenta(p.bold("deja audit"))} ${p.dim(`— ${r.sessions} Claude Code sessions, ${r.requests.toLocaleString("en-US")} API requests, ${day(r.start)} → ${day(r.end)}`)}`);
+  const sub = r.subagents > 0 ? ` (${r.subagents} of them subagents)` : "";
+  out.push(
+    `${p.magenta(p.bold("deja audit"))} ${p.dim(`— ${r.sessions} Claude Code sessions${sub}, ${r.requests.toLocaleString("en-US")} API requests, ${day(r.start)} → ${day(r.end)}`)}`,
+  );
   out.push("");
   if (r.sessions === 0) {
     out.push("No Claude Code transcripts found. Use Claude Code for a while, then run this again.");
