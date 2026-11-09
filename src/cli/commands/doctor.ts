@@ -1,10 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { accessSync, constants, mkdirSync } from "node:fs";
+import { accessSync, constants, mkdirSync, readFileSync } from "node:fs";
 import { claudeProjectsDir, discoverTranscripts } from "../../audit/discover.js";
 import { dejaHome } from "../../core/ledger.js";
 import { flagString, type ParsedArgs } from "../args.js";
 import { paint, useColor } from "../format.js";
 import { resolveUpstream } from "../upstream.js";
+import { claudeSettingsPath } from "./setup.js";
 
 export type CheckStatus = "ok" | "warn" | "fail";
 
@@ -52,6 +53,29 @@ export function checkBaseUrl(env: NodeJS.ProcessEnv = process.env): Check {
   return { name: "base url", status: "ok", detail: `ANTHROPIC_BASE_URL=${base}; deja will chain in front of it` };
 }
 
+/**
+ * Claude Code's settings can set environment variables for every session.
+ * An ANTHROPIC_BASE_URL there may override the one `deja claude` sets.
+ */
+export function checkClaudeSettings(path: string): Check {
+  let settings: { env?: Record<string, unknown>; statusLine?: { command?: unknown } };
+  try {
+    settings = JSON.parse(readFileSync(path, "utf8")) as typeof settings;
+  } catch {
+    return { name: "claude config", status: "ok", detail: `no readable ${path}` };
+  }
+  const base = settings.env?.ANTHROPIC_BASE_URL;
+  if (typeof base === "string" && base.length > 0) {
+    return {
+      name: "claude config",
+      status: "warn",
+      detail: `${path} sets ANTHROPIC_BASE_URL=${base}, which can override deja; remove it or point it at \`deja start\``,
+    };
+  }
+  const line = settings.statusLine?.command === "deja statusline" ? "deja status line installed" : "no deja status line (`deja setup statusline`)";
+  return { name: "claude config", status: "ok", detail: line };
+}
+
 export async function checkUpstream(url: string, fetcher: typeof fetch = fetch): Promise<Check> {
   try {
     const res = await fetcher(url, { method: "HEAD", signal: AbortSignal.timeout(5000) });
@@ -69,7 +93,7 @@ export function renderChecks(checks: Check[], color: boolean): string {
 
 export async function doctorCommand(args: ParsedArgs): Promise<number> {
   const upstream = resolveUpstream(flagString(args.flags, "upstream"));
-  const checks = [checkNode(), checkHome(), checkClaude(), checkTranscripts(), checkBaseUrl()];
+  const checks = [checkNode(), checkHome(), checkClaude(), checkClaudeSettings(claudeSettingsPath()), checkTranscripts(), checkBaseUrl()];
   if (args.flags.offline !== true) checks.push(await checkUpstream(upstream));
   process.stdout.write(`${renderChecks(checks, useColor(process.stdout))}\n`);
   return checks.some((c) => c.status === "fail") ? 1 : 0;
