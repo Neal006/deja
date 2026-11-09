@@ -171,7 +171,7 @@ To send one request untouched, add the header `x-deja: off`. deja strips the hea
 Dedup can't: it never edits earlier messages. Decay does edit them, but only when the ski-rental rule says the rewrite has paid for itself, or when the cache has already expired. The audit bills every strategy with an exact-prefix cache model, so any cache breakage would show up as cost.
 
 **Will the model get confused?**
-References are plain text the model reads like any other annotation, and they point at content that's still in context. Stubs tell the model exactly how to get the content back. Decay only touches output that has sat unused for several requests.
+References are plain text the model reads like any other annotation, and they point at content that's still in context. Stubs tell the model exactly how to get the content back. Decay only touches output that has sat unused for several requests, never touches user answers, subagent reports or skills, and keeps a file's contents while the agent is still editing it. In the replay, a quarter of the outputs deja would stub were called again later anyway, without deja. `deja stats` tracks the same rate live.
 
 **What about Claude Code's own compaction?**
 It still works. deja just pushes it further away. Compaction summaries are lossy, while deja's references are exact.
