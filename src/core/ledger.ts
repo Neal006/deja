@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -105,4 +105,15 @@ export function totals(entries: LedgerEntry[], since = 0): Totals {
   }
   t.saved = t.tokensBefore - t.tokensAfter;
   return t;
+}
+
+/**
+ * Start a fresh ledger. The old one is kept next to it with a timestamp,
+ * never deleted. Returns the backup path, or undefined if there was none.
+ */
+export function resetLedger(path = ledgerPath(), now = Date.now()): string | undefined {
+  if (!existsSync(path)) return undefined;
+  const backup = `${path}.${new Date(now).toISOString().replace(/[:.]/g, "-")}.bak`;
+  renameSync(path, backup);
+  return backup;
 }
