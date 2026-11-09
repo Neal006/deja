@@ -3,6 +3,7 @@ import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { dejaHome } from "../../core/ledger.js";
 import { formatTokens } from "../../core/tokens.js";
+import { decayFromEnv, type DecayConfig } from "../../decay/policy.js";
 import { StateStore } from "../../decay/store.js";
 import { recorder } from "../../proxy/record.js";
 import { createProxy, type ProxyEvent } from "../../proxy/server.js";
@@ -27,6 +28,7 @@ export function startProxy(opts: {
   enabled?: boolean;
   /** Cache-aware eviction of stale context (default on). */
   decay?: boolean;
+  decayConfig?: DecayConfig;
   ledger?: string;
   onEvent?: (e: ProxyEvent) => void;
 }): Promise<StartedProxy> {
@@ -34,7 +36,10 @@ export function startProxy(opts: {
   const server = createProxy({
     upstream: opts.upstream,
     enabled: opts.enabled,
-    decay: opts.decay === false ? undefined : { store: new StateStore(join(dejaHome(), "decay-state.json")) },
+    decay:
+      opts.decay === false
+        ? undefined
+        : { store: new StateStore(join(dejaHome(), "decay-state.json")), config: opts.decayConfig ?? decayFromEnv() },
     onRequest: (e) => {
       rec.onRequest(e);
       opts.onEvent?.(e);
@@ -65,6 +70,16 @@ export function eventLine(e: ProxyEvent, color: boolean): string {
   );
 }
 
+/** Decay settings from flags, falling back to the environment. */
+export function decayConfigFromArgs(args: ParsedArgs): DecayConfig {
+  const env = decayFromEnv();
+  return {
+    ...env,
+    minAge: flagNumber(args.flags, "min-age") ?? env.minAge,
+    minSaving: flagNumber(args.flags, "min-saving") ?? env.minSaving,
+  };
+}
+
 export async function startCommand(args: ParsedArgs): Promise<number> {
   const color = useColor(process.stderr);
   const p = paint(color);
@@ -76,6 +91,7 @@ export async function startCommand(args: ParsedArgs): Promise<number> {
     upstream,
     enabled: args.flags.off !== true,
     decay: args.flags.decay !== false,
+    decayConfig: decayConfigFromArgs(args),
     onEvent: quiet ? undefined : (e) => process.stderr.write(`${eventLine(e, color)}\n`),
   });
   process.stderr.write(

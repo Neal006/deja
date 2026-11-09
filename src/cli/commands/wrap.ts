@@ -3,7 +3,7 @@ import { formatTokens } from "../../core/tokens.js";
 import { flagString, type ParsedArgs } from "../args.js";
 import { paint, usd, useColor } from "../format.js";
 import { resolveUpstream } from "../upstream.js";
-import { startProxy } from "./start.js";
+import { decayConfigFromArgs, startProxy } from "./start.js";
 
 /**
  * Run an agent with deja in front of it: start a proxy on a free port, launch
@@ -17,6 +17,7 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
     upstream,
     enabled: args.flags.off !== true,
     decay: args.flags.decay !== false,
+    decayConfig: decayConfigFromArgs(args),
   });
 
   const env = {
