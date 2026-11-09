@@ -21,6 +21,8 @@ export interface Transcript {
   path: string;
   sessionId?: string;
   cwd?: string;
+  /** The model that answered most often in this transcript. */
+  model?: string;
   /** First and last timestamp seen, epoch ms. */
   start?: number;
   end?: number;
@@ -35,7 +37,7 @@ interface Line {
   sessionId?: string;
   cwd?: string;
   timestamp?: string;
-  message?: { id?: string; role?: string; content?: unknown };
+  message?: { id?: string; role?: string; model?: string; content?: unknown };
 }
 
 function blocks(content: unknown): ContentBlock[] {
@@ -49,6 +51,7 @@ export function parseTranscript(text: string, path = "<memory>"): Transcript {
   let messages: Message[] = [];
   let times: Array<number | undefined> = [];
   let lastAssistantId: string | undefined;
+  const models = new Map<string, number>();
 
   const closeSegment = () => {
     if (messages.length > 0) t.segments.push({ messages, times });
@@ -85,6 +88,9 @@ export function parseTranscript(text: string, path = "<memory>"): Transcript {
     if (line.isSidechain) continue;
     const msg = line.message;
     if (!msg) continue;
+    if (line.type === "assistant" && typeof msg.model === "string" && !msg.model.startsWith("<")) {
+      models.set(msg.model, (models.get(msg.model) ?? 0) + 1);
+    }
     const content = blocks(msg.content);
     if (content.length === 0) continue;
 
@@ -103,6 +109,13 @@ export function parseTranscript(text: string, path = "<memory>"): Transcript {
     if (role === "assistant") lastAssistantId = msg.id;
   }
   closeSegment();
+  let best = 0;
+  for (const [m, n] of models) {
+    if (n > best) {
+      best = n;
+      t.model = m;
+    }
+  }
   return t;
 }
 

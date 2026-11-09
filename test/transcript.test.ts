@@ -35,6 +35,16 @@ describe("parseTranscript", () => {
     expect(t.end).toBe(Date.parse("2026-11-01T10:00:05Z"));
   });
 
+  it("finds the most used model", () => {
+    const text = [
+      L({ type: "assistant", message: { id: "1", role: "assistant", model: "claude-opus-4-5", content: "a" } }),
+      L({ type: "assistant", message: { id: "2", role: "assistant", model: "claude-opus-4-5", content: "b" } }),
+      L({ type: "assistant", message: { id: "3", role: "assistant", model: "claude-haiku-4-5", content: "c" } }),
+      L({ type: "assistant", message: { id: "4", role: "assistant", model: "<synthetic>", content: "d" } }),
+    ].join("\n");
+    expect(parseTranscript(text).model).toBe("claude-opus-4-5");
+  });
+
   it("records a timestamp per message", () => {
     const seg = parseTranscript(sample()).segments[0]!;
     expect(seg.times).toHaveLength(seg.messages.length);
