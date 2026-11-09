@@ -21,6 +21,7 @@ export function toEntry(event: ProxyEvent, now = Date.now()): LedgerEntry {
     entry.cr = event.usage.cacheRead;
     entry.cw = event.usage.cacheWrite;
     entry.out = event.usage.output;
+    if (event.estimatedPrompt !== undefined) entry.est = event.estimatedPrompt;
   }
   return entry;
 }

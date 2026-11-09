@@ -21,6 +21,8 @@ export interface LedgerEntry {
   cr?: number;
   cw?: number;
   out?: number;
+  /** deja's estimate of the prompt tokens sent, for calibration. */
+  est?: number;
 }
 
 export function dejaHome(env: NodeJS.ProcessEnv = process.env): string {
@@ -59,6 +61,8 @@ export interface Totals {
   cacheRead: number;
   cacheWrite: number;
   output: number;
+  /** deja's estimate of prompt tokens, summed over measured requests. */
+  estimated: number;
   compressedResults: number;
   tokensBefore: number;
   tokensAfter: number;
@@ -75,6 +79,7 @@ export function totals(entries: LedgerEntry[], since = 0): Totals {
     cacheRead: 0,
     cacheWrite: 0,
     output: 0,
+    estimated: 0,
     compressedResults: 0,
     tokensBefore: 0,
     tokensAfter: 0,
@@ -94,6 +99,7 @@ export function totals(entries: LedgerEntry[], since = 0): Totals {
       t.cacheRead += e.cr ?? 0;
       t.cacheWrite += e.cw ?? 0;
       t.output += e.out ?? 0;
+      t.estimated += e.est ?? 0;
     }
     if (t.since === undefined || e.t < t.since) t.since = e.t;
   }

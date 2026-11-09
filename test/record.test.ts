@@ -29,6 +29,10 @@ describe("toEntry with usage", () => {
     const e = toEntry({ ...event, usage: { input: 1, cacheRead: 2, cacheWrite: 3, output: 4 } }, 1);
     expect([e.in, e.cr, e.cw, e.out]).toEqual([1, 2, 3, 4]);
   });
+  it("stores the prompt estimate alongside measured usage", () => {
+    const e = toEntry({ ...event, estimatedPrompt: 900, usage: { input: 1, cacheRead: 2, cacheWrite: 3, output: 4 } }, 1);
+    expect(e.est).toBe(900);
+  });
   it("omits usage fields when unknown", () => {
     expect("in" in toEntry(event, 1)).toBe(false);
   });
