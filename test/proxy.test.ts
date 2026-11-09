@@ -3,7 +3,7 @@ import { gzipSync } from "node:zlib";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { StateStore } from "../src/decay/store.js";
-import { createProxy, forwardHeaders, isCompressiblePath, rewriteBody, type ProxyEvent } from "../src/proxy/server.js";
+import { apiKind, createProxy, forwardHeaders, isCompressiblePath, rewriteBody, type ProxyEvent } from "../src/proxy/server.js";
 import { code, Conversation, numbered } from "./helpers/conversation.js";
 
 interface Captured {
@@ -48,6 +48,43 @@ function repeatedReads() {
     .tool("Read", { file_path: "/repo/a.ts" }, file)
     .build();
 }
+
+describe("apiKind", () => {
+  it.each([
+    ["/v1/messages", "anthropic"],
+    ["/v1/chat/completions", "openai"],
+    ["/api/v1/chat/completions?x=1", "openai"],
+    ["/v1/embeddings", undefined],
+  ])("%s -> %s", (p, k) => expect(apiKind(p)).toBe(k));
+});
+
+describe("rewriteBody for OpenAI", () => {
+  function chat() {
+    const file = numbered(code(60));
+    const msgs = [
+      { role: "system", content: "sys" },
+      { role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "read_file", arguments: '{"path":"a.ts"}' } }] },
+      { role: "tool", tool_call_id: "c1", content: file },
+      { role: "assistant", content: null, tool_calls: [{ id: "c2", type: "function", function: { name: "read_file", arguments: '{"path":"a.ts"}' } }] },
+      { role: "tool", tool_call_id: "c2", content: file },
+    ];
+    return Buffer.from(JSON.stringify({ model: "gpt-5", messages: msgs }));
+  }
+
+  it("dedups chat completions and keeps the OpenAI shape", () => {
+    const r = rewriteBody("/v1/chat/completions", {}, chat(), {});
+    const out = JSON.parse(r.body.toString()) as { messages: Array<{ role: string; content: string }> };
+    expect(out.messages).toHaveLength(5);
+    expect(out.messages[4]!.role).toBe("tool");
+    expect(out.messages[4]!.content).toContain("same as all of read_file a.ts");
+    expect(r.event?.stats.compressed).toBe(1);
+  });
+
+  it("leaves Anthropic-shaped bodies on the chat path alone", () => {
+    const raw = Buffer.from(JSON.stringify({ messages: [{ role: "user", content: "hi" }] }));
+    expect(rewriteBody("/v1/chat/completions", {}, raw, {}).body).toBe(raw);
+  });
+});
 
 describe("isCompressiblePath", () => {
   it.each([

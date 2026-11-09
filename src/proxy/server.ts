@@ -1,7 +1,9 @@
 import { createServer, request as httpRequest, type IncomingHttpHeaders, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { transformRequest, type TransformOptions, type TransformStats } from "../anthropic/transform.js";
-import { isMessagesRequest } from "../anthropic/types.js";
+import { isMessagesRequest, type MessagesRequest } from "../anthropic/types.js";
+import { fromAnthropic, toAnthropic, type Mapped } from "../openai/adapter.js";
+import { isChatRequest, type ChatRequest } from "../openai/types.js";
 import { takeInventory } from "../decay/inventory.js";
 import { decide, DEFAULT_DECAY, type DecayConfig, type DecayReason } from "../decay/policy.js";
 import type { StateStore } from "../decay/store.js";
@@ -55,11 +57,23 @@ const HOP_BY_HOP = new Set([
   "host",
 ]);
 
+export type ApiKind = "anthropic" | "openai";
+
+/** Which API a path belongs to, if its body carries a conversation. */
+export function apiKind(path: string): ApiKind | undefined {
+  const p = path.split("?")[0] ?? "";
+  if (/\/v1\/messages(\/count_tokens)?$/.test(p)) return "anthropic";
+  if (/\/chat\/completions$/.test(p)) return "openai";
+  return undefined;
+}
+
 /** Endpoints whose bodies carry a conversation worth compressing. */
 export function isCompressiblePath(path: string): boolean {
-  const p = path.split("?")[0] ?? "";
-  return /\/v1\/messages(\/count_tokens)?$/.test(p);
+  return apiKind(path) !== undefined;
 }
+
+/** OpenAI-style caches have no write premium: a rewrite costs 1x, not 1.25x. */
+export const OPENAI_CACHE = { writeMultiplier: 1, readMultiplier: 0.1 };
 
 export function forwardHeaders(headers: IncomingHttpHeaders, bodyLength: number | null): Record<string, string | string[]> {
   const out: Record<string, string | string[]> = {};
@@ -82,7 +96,8 @@ function readBody(req: IncomingMessage): Promise<Buffer> {
 }
 
 /**
- * Rewrite a request body if it is an uncompressed JSON Messages request.
+ * Rewrite a request body if it is an uncompressed JSON Anthropic Messages or
+ * OpenAI Chat Completions request.
  * Anything we do not understand is returned unchanged, byte for byte.
  */
 export function rewriteBody(
@@ -91,16 +106,28 @@ export function rewriteBody(
   body: Buffer,
   opts: ProxyOptions,
 ): { body: Buffer; event?: ProxyEvent } {
-  if (opts.enabled === false || !isCompressiblePath(path) || body.length === 0) return { body };
+  const kind = apiKind(path);
+  if (opts.enabled === false || !kind || body.length === 0) return { body };
   if (headers["content-encoding"]) return { body };
-  let parsed: unknown;
+  let raw: unknown;
   try {
-    parsed = JSON.parse(body.toString("utf8"));
+    raw = JSON.parse(body.toString("utf8"));
   } catch {
     return { body };
   }
-  if (!isMessagesRequest(parsed)) return { body };
   const started = performance.now();
+  let chat: ChatRequest | undefined;
+  let mapped: Mapped | undefined;
+  let parsed: MessagesRequest;
+  if (kind === "openai") {
+    if (!isChatRequest(raw)) return { body };
+    chat = raw;
+    mapped = toAnthropic(chat);
+    parsed = mapped.body;
+  } else {
+    if (!isMessagesRequest(raw)) return { body };
+    parsed = raw;
+  }
   let evict: Set<string> | undefined;
   let decayInfo: ProxyEvent["decay"];
   if (opts.decay) {
@@ -112,7 +139,9 @@ export function rewriteBody(
         evict = new Set(opts.decay.store.peek(key)?.evicted ?? []);
       } else {
         const state = opts.decay.store.get(key);
-        const d = decide(parsed, state, (opts.decay.now ?? Date.now)(), opts.decay.config ?? DEFAULT_DECAY);
+        const base = opts.decay.config ?? DEFAULT_DECAY;
+        const cfg = kind === "openai" ? { ...base, ...OPENAI_CACHE } : base;
+        const d = decide(parsed, state, (opts.decay.now ?? Date.now)(), cfg);
         evict = d.evict;
         decayInfo = { reason: d.reason, newlyEvicted: d.newlyEvicted.length, evicted: d.evict.size };
         try {
@@ -124,6 +153,7 @@ export function rewriteBody(
     }
   }
   const result = transformRequest(parsed, { ...opts.transform, evict });
+  const out: unknown = chat && mapped ? (result.changed ? fromAnthropic(chat, mapped, result.body) : chat) : result.body;
   const event: ProxyEvent = {
     path,
     model: parsed.model,
@@ -132,7 +162,7 @@ export function rewriteBody(
     decay: decayInfo,
   };
   if (!result.changed) return { body, event };
-  return { body: Buffer.from(JSON.stringify(result.body), "utf8"), event };
+  return { body: Buffer.from(JSON.stringify(out), "utf8"), event };
 }
 
 function sendError(res: ServerResponse, status: number, message: string): void {
