@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+
 /**
  * Cross-platform process launch arguments.
  *
@@ -28,13 +30,41 @@ export function quoteWindowsArg(arg: string): string {
   return out;
 }
 
+/**
+ * Find what a bare command name resolves to on Windows, using PATH and
+ * PATHEXT the way cmd.exe does. Returns the full path, or undefined.
+ */
+export function resolveWindowsCommand(command: string, env: NodeJS.ProcessEnv, exists: (p: string) => boolean): string | undefined {
+  const exts = (env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean);
+  const hasExt = exts.some((e) => command.toLowerCase().endsWith(e.toLowerCase()));
+  const candidates = hasExt ? [command] : exts.map((e) => command + e.toLowerCase());
+  const dirs = /[\\/]/.test(command) ? [""] : (env.PATH ?? env.Path ?? "").split(";").filter(Boolean);
+  for (const dir of dirs) {
+    for (const c of candidates) {
+      const full = dir ? `${dir.replace(/[\\/]$/, "")}\\${c}` : c;
+      if (exists(full)) return full;
+    }
+  }
+  return undefined;
+}
+
 export interface Launch {
   command: string;
   args: string[];
   shell: boolean;
 }
 
-export function launchArgs(command: string, args: string[], platform: NodeJS.Platform = process.platform): Launch {
+export function launchArgs(
+  command: string,
+  args: string[],
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+  exists: (p: string) => boolean = existsSync,
+): Launch {
   if (platform !== "win32") return { command, args, shell: false };
-  return { command: quoteWindowsArg(command), args: args.map(quoteWindowsArg), shell: true };
+  const resolved = resolveWindowsCommand(command, env, exists);
+  // Real executables are started directly: no shell, no quoting problems
+  // (cmd.exe cannot even pass newlines through). Only script shims need it.
+  if (resolved && /\.(exe|com)$/i.test(resolved)) return { command: resolved, args, shell: false };
+  return { command: quoteWindowsArg(resolved ?? command), args: args.map(quoteWindowsArg), shell: true };
 }
