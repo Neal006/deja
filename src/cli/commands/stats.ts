@@ -66,6 +66,10 @@ export function renderReport(report: StatsReport, color: boolean): string {
         p.dim(`cache reads ${percent(all.cacheRead, prompt)} · cache writes ${percent(all.cacheWrite, prompt)} · uncached ${percent(all.input, prompt)}`),
     );
     lines.push(`  output tokens ${p.bold(formatTokens(all.output))}`);
+    if (all.estimated > 0 && prompt > 0) {
+      const ratio = all.estimated / prompt;
+      lines.push(p.dim(`  deja's token estimates run at ${ratio.toFixed(2)}× the provider's count on your traffic`));
+    }
   }
   lines.push("");
   lines.push(p.dim(`"tokens" counts input tokens not resent to the model; dollars assume prompt caching.`));

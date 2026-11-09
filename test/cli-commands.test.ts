@@ -52,6 +52,12 @@ describe("renderReport with measured usage", () => {
     expect(out).toContain("measured by the provider");
     expect(out).toContain("cache reads 80.0%");
     expect(out).toContain("output tokens 50");
+    expect(out).not.toContain("estimates run at");
+  });
+
+  it("reports estimator accuracy when estimates were recorded", () => {
+    const e = { ...entry(NOW - 1000, 5000), in: 100, cr: 800, cw: 100, out: 50, est: 900 };
+    expect(renderReport(buildReport([e], NOW, undefined, "/l"), false)).toContain("estimates run at 0.90×");
   });
 });
 
