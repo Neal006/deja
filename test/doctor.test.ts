@@ -78,6 +78,6 @@ describe("doctor checks", () => {
 
   it("renders a checklist", () => {
     const out = renderChecks([{ name: "node", status: "ok", detail: "v22" }, { name: "x", status: "fail", detail: "bad" }], false);
-    expect(out).toBe("✓ node         v22\n✗ x            bad");
+    expect(out).toBe("✓ node           v22\n✗ x              bad");
   });
 });

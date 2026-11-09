@@ -88,7 +88,7 @@ export async function checkUpstream(url: string, fetcher: typeof fetch = fetch):
 export function renderChecks(checks: Check[], color: boolean): string {
   const p = paint(color);
   const icon = { ok: p.green("✓"), warn: p.yellow("!"), fail: p.red("✗") };
-  return checks.map((c) => `${icon[c.status]} ${c.name.padEnd(12)} ${p.dim(c.detail)}`).join("\n");
+  return checks.map((c) => `${icon[c.status]} ${c.name.padEnd(14)} ${p.dim(c.detail)}`).join("\n");
 }
 
 export async function doctorCommand(args: ParsedArgs): Promise<number> {
