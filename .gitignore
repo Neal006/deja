@@ -5,3 +5,4 @@ coverage/
 .DS_Store
 .deja/
 bench-results.json
+*.tgz
