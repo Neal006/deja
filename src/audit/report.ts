@@ -26,6 +26,8 @@ export interface AuditReport {
   topSessions: Array<{ path: string; cwd?: string; baseline: number; deja: number; requests: number }>;
   /** Per working directory: sessions, requests and bills, biggest first. */
   projects: ProjectRow[];
+  /** Auto-compactions seen, and the context size at those moments. */
+  compactions: { count: number; baseline: number; deja: number };
 }
 
 export interface ProjectRow {
@@ -67,6 +69,7 @@ export function aggregate(sessions: SessionStat[], opts: AggregateOptions = {}):
     heaviest: [],
     topSessions: [],
     projects: [],
+    compactions: { count: 0, baseline: 0, deja: 0 },
   };
   const projects = new Map<string, ProjectRow>();
   const targets = new Map<string, TargetStat>();
@@ -90,6 +93,11 @@ export function aggregate(sessions: SessionStat[], opts: AggregateOptions = {}):
         agg.savedSent += t.savedSent;
         agg.sent += t.sent;
       }
+    }
+    for (const c of s.compactions ?? []) {
+      r.compactions.count++;
+      r.compactions.baseline += c.baseline;
+      r.compactions.deja += c.deja;
     }
     for (const k of STRATEGIES) {
       const b = s.bills?.[k];
@@ -171,6 +179,19 @@ export function renderAudit(r: AuditReport, color: boolean): string {
       const tint = k === "baseline" ? delta : frac >= 0 ? p.green(delta) : p.red(delta);
       out.push(`    ${LABELS[k].padEnd(18)} ${usd(dollars(r, b.cost)).padStart(9)} ${tint}  ${p.dim(NOTES[k])}`.trimEnd());
     }
+  }
+
+  if (r.compactions.count > 0) {
+    const c = r.compactions;
+    const before = c.baseline / c.count;
+    const after = c.deja / c.count;
+    out.push("");
+    out.push(
+      `  ${p.bold(`${c.count} auto-compactions`)} ${p.dim("in this history. When they fired, the context held")} ${formatTokens(Math.round(before))} ${p.dim("tokens on average;")}`,
+    );
+    out.push(
+      `  ${p.dim("with deja it would have held")} ${p.bold(p.green(formatTokens(Math.round(after))))} ${p.dim(`(${percent(before - after, before)} more headroom before compacting)`)}`,
+    );
   }
 
   const frac = r.toolTokensSent > 0 ? r.savedSent / r.toolTokensSent : 0;

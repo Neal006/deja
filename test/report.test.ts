@@ -4,7 +4,7 @@ import type { Bill } from "../src/audit/billing.js";
 import type { SessionStat } from "../src/audit/simulate.js";
 
 function bill(cost: number, requests = 10): Bill {
-  return { cost, cachedTokens: 0, writtenTokens: 0, promptTokens: cost * 10, requests };
+  return { cost, cachedTokens: 0, writtenTokens: 0, promptTokens: cost * 10, requests, lastPrompt: 0 };
 }
 
 function session(over: Partial<SessionStat> = {}): SessionStat {
@@ -24,6 +24,7 @@ function session(over: Partial<SessionStat> = {}): SessionStat {
     weightedSaved: 500,
     targets: new Map([["Bash `npm test`", { target: "Bash `npm test`", tool: "Bash", calls: 3, tokens: 900, saved: 0, savedSent: 0, sent: 9000 }]]),
     bills: { baseline: bill(1_000_000), eager: bill(1_100_000), dedup: bill(990_000), deja: bill(700_000) },
+    compactions: [],
     ...over,
   };
 }
@@ -137,5 +138,24 @@ describe("projects", () => {
 
   it("explains an empty table", () => {
     expect(renderProjects(aggregate([session({ bills: undefined })], { env: {} }), false)).toContain("without --quick");
+  });
+});
+
+describe("compactions", () => {
+  it("aggregates and renders headroom at compaction points", () => {
+    const r = aggregate(
+      [session({ compactions: [{ baseline: 160_000, deja: 100_000 }] }), session({ compactions: [{ baseline: 140_000, deja: 80_000 }] })],
+      { env: {} },
+    );
+    expect(r.compactions).toEqual({ count: 2, baseline: 300_000, deja: 180_000 });
+    const out = renderAudit(r, false);
+    expect(out).toContain("2 auto-compactions");
+    expect(out).toContain("150.0k");
+    expect(out).toContain("90.0k");
+    expect(out).toContain("40.0% more headroom");
+  });
+
+  it("stays quiet without compactions", () => {
+    expect(renderAudit(aggregate([session()], { env: {} }), false)).not.toContain("auto-compactions");
   });
 });
