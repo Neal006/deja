@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkBaseUrl,
   checkClaude,
+  checkClaudeSettings,
   checkHome,
   checkNode,
   checkTranscripts,
@@ -37,6 +38,24 @@ describe("doctor checks", () => {
     const c = checkClaude("node");
     expect(c.status).toBe("ok");
     expect(c.detail).toMatch(/^v\d+/);
+  });
+
+  it("warns when Claude Code settings override the base URL", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "deja-doc-")), "settings.json");
+    writeFileSync(path, JSON.stringify({ env: { ANTHROPIC_BASE_URL: "https://gw" } }));
+    const c = checkClaudeSettings(path);
+    expect(c.status).toBe("warn");
+    expect(c.detail).toContain("https://gw");
+  });
+
+  it("notices the deja status line", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "deja-doc-")), "settings.json");
+    writeFileSync(path, JSON.stringify({ statusLine: { type: "command", command: "deja statusline" } }));
+    expect(checkClaudeSettings(path).detail).toBe("deja status line installed");
+  });
+
+  it("is fine without a settings file", () => {
+    expect(checkClaudeSettings("/definitely/missing/settings.json").status).toBe("ok");
   });
 
   it("warns when there is no history", () => {
