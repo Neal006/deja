@@ -103,6 +103,16 @@ npx dejactx run -- aider --model sonnet
 npx dejactx stats
 ```
 
+### Live savings in Claude Code's status line
+
+Install globally (`npm i -g dejactx`) and add this to `~/.claude/settings.json`:
+
+```json
+{ "statusLine": { "type": "command", "command": "deja statusline" } }
+```
+
+Sessions started with `deja claude` then show something like `deja ↓45.6k tok · $0.42 · 3 stubbed` at the bottom of the screen.
+
 ### OpenAI-compatible agents
 
 deja also understands the OpenAI Chat Completions format, so it works with Cline, Roo, OpenCode, aider, Continue, OpenRouter, vLLM or Ollama, anything that lets you set a base URL:
