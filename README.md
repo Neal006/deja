@@ -98,10 +98,24 @@ npx dejactx run -- aider --model sonnet
 npx dejactx stats
 ```
 
+### OpenAI-compatible agents
+
+deja also understands the OpenAI Chat Completions format, so it works with Cline, Roo, OpenCode, aider, Continue, OpenRouter, vLLM or Ollama, anything that lets you set a base URL:
+
+```bash
+npx dejactx run --openai -- aider --model gpt-5           # wraps the agent
+npx dejactx start --upstream https://openrouter.ai/api     # or point the agent's base URL at http://127.0.0.1:8787/v1
+```
+
+For providers with no prompt cache at all (most local models), add `--uncached`: every request is billed in full there, so stale output is evicted as soon as it goes stale.
+
 | flag | meaning |
 |---|---|
 | `--no-decay` | dedup only: never stub anything |
 | `--off` | forward requests untouched (for A/B comparisons) |
+| `--openai` | wrap an OpenAI-compatible agent (sets `OPENAI_BASE_URL`) |
+| `--uncached` | the upstream has no prompt cache: evict eagerly |
+| `--min-age <n>` | requests before output counts as stale (default 5) |
 | `--upstream <url>` | forward somewhere else (defaults to `$ANTHROPIC_BASE_URL`, so deja can sit in front of a corporate gateway) |
 
 ## Safety
