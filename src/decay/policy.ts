@@ -28,6 +28,11 @@ export interface DecayConfig {
   minSaving: number;
   writeMultiplier: number;
   readMultiplier: number;
+  /**
+   * The provider has no prompt cache (many local and OpenAI-compatible
+   * endpoints). Every request is billed in full, so eviction is always free.
+   */
+  uncached?: boolean;
 }
 
 export const DEFAULT_DECAY: DecayConfig = {
@@ -47,6 +52,7 @@ export function decayFromEnv(env: NodeJS.ProcessEnv = process.env, base: DecayCo
     ...base,
     minAge: num(env.DEJA_MIN_AGE) ?? base.minAge,
     minSaving: num(env.DEJA_MIN_SAVING) ?? base.minSaving,
+    uncached: env.DEJA_UNCACHED === "1" ? true : base.uncached,
   };
 }
 
@@ -63,7 +69,7 @@ export function freshState(): ConversationState {
   return { rent: 0, evicted: [] };
 }
 
-export type DecayReason = "none" | "idle" | "rent";
+export type DecayReason = "none" | "idle" | "rent" | "uncached";
 
 export interface DecayDecision {
   /** Every id to stub on this request (previous and new evictions). */
@@ -98,13 +104,15 @@ export function decide(body: MessagesRequest, state: ConversationState, now: num
   // message is uncached either way.
   let suffix = 0;
   for (let i = p; i < inv.messageTokens.length - 1; i++) suffix += inv.messageTokens[i]!;
-  const purchase = idle ? 0 : Math.max(0, (suffix - dead) * cfg.writeMultiplier - suffix * cfg.readMultiplier);
+  const free = idle || cfg.uncached === true;
+  const purchase = free ? 0 : Math.max(0, (suffix - dead) * cfg.writeMultiplier - suffix * cfg.readMultiplier);
 
-  if (idle || state.rent + dead * cfg.readMultiplier >= purchase) {
+  if (free || state.rent + dead * cfg.readMultiplier >= purchase) {
     for (const it of candidates) evict.add(it.id);
     state.evicted = [...evict];
     state.rent = 0;
-    return { evict, newlyEvicted: candidates, reason: idle ? "idle" : "rent", carried: 0, rent: 0, purchase };
+    const reason: DecayReason = cfg.uncached ? "uncached" : idle ? "idle" : "rent";
+    return { evict, newlyEvicted: candidates, reason, carried: 0, rent: 0, purchase };
   }
 
   state.rent += dead * cfg.readMultiplier;

@@ -72,6 +72,16 @@ describe("decide", () => {
     expect(d.evict.size).toBe(0);
   });
 
+  it("evicts immediately when the provider has no cache", () => {
+    const bigFiller = Array.from({ length: 300 }, (_, i) => `row ${i} with some text`).join("\n");
+    const s = freshState();
+    s.lastSeen = 0;
+    const d = decide(session(6, bigFiller), s, MIN, { ...DEFAULT_DECAY, uncached: true });
+    expect(d.reason).toBe("uncached");
+    expect(d.purchase).toBe(0);
+    expect(d.evict.has("toolu_0001")).toBe(true);
+  });
+
   it("updates lastSeen", () => {
     const s = freshState();
     decide(session(0), s, 1234);
@@ -85,6 +95,9 @@ describe("decayFromEnv", () => {
   });
   it("reads overrides", () => {
     expect(decayFromEnv({ DEJA_MIN_AGE: "2", DEJA_MIN_SAVING: "50" })).toMatchObject({ minAge: 2, minSaving: 50 });
+  });
+  it("reads DEJA_UNCACHED", () => {
+    expect(decayFromEnv({ DEJA_UNCACHED: "1" }).uncached).toBe(true);
   });
   it("ignores invalid values", () => {
     expect(decayFromEnv({ DEJA_MIN_AGE: "-1", DEJA_MIN_SAVING: "lots" })).toEqual(DEFAULT_DECAY);
