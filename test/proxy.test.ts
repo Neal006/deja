@@ -240,6 +240,16 @@ describe("createProxy", () => {
     expect(events).toHaveLength(1);
   });
 
+  it("reuses upstream connections across requests", async () => {
+    let connections = 0;
+    const up = createServer((_req, res) => res.end("{}"));
+    up.on("connection", () => connections++);
+    const upPort = await listen(up);
+    const port = await listen(createProxy({ upstream: `http://127.0.0.1:${upPort}` }));
+    for (let i = 0; i < 3; i++) await (await fetch(`http://127.0.0.1:${port}/v1/models`)).text();
+    expect(connections).toBe(1);
+  });
+
   it("forwards other endpoints untouched", async () => {
     const captured: Captured = {};
     const upstreamPort = await fakeUpstream(captured);
