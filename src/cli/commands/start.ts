@@ -77,6 +77,7 @@ export function decayConfigFromArgs(args: ParsedArgs): DecayConfig {
     ...env,
     minAge: flagNumber(args.flags, "min-age") ?? env.minAge,
     minSaving: flagNumber(args.flags, "min-saving") ?? env.minSaving,
+    uncached: args.flags.uncached === true ? true : env.uncached,
   };
 }
 

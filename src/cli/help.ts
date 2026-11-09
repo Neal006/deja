@@ -23,6 +23,7 @@ Options
   --no-decay         dedup only: never stub stale tool output
   --min-age <n>      requests before output counts as stale (default 5)
   --min-saving <n>   smallest eviction worth making, in tokens (default 150)
+  --uncached         the upstream has no prompt cache: evict stale output eagerly
   --quick            audit: skip the strategy replay
   --quiet            do not log one line per request (start)
 
@@ -32,5 +33,6 @@ Environment
   DEJA_INPUT_PRICE   USD per million input tokens for savings estimates
   DEJA_MIN_AGE       same as --min-age
   DEJA_MIN_SAVING    same as --min-saving
+  DEJA_UNCACHED=1    same as --uncached
   NO_COLOR           disable colors
 `;
