@@ -82,6 +82,7 @@ describe("dominantModel", () => {
 describe("renderAudit", () => {
   it("renders an empty audit", () => {
     expect(renderAudit(aggregate([], { env: {} }), false)).toContain("No Claude Code transcripts found");
+    expect(renderAudit(aggregate([], { env: {}, agentName: "Codex" }), false)).toContain("No Codex transcripts found");
   });
 
   it("leads with the bill cut and the strategy table", () => {

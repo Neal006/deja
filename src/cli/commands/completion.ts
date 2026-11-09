@@ -2,7 +2,7 @@ import type { ParsedArgs } from "../args.js";
 
 /** Subcommands and their flags, the single source for completions. */
 export const COMMANDS: Record<string, string[]> = {
-  audit: ["--since", "--project", "--dir", "--limit", "--min-age", "--uncached", "--quick", "--share", "--by-project", "--tune", "--no-calibrate", "--json", "--jobs", "--model", "--top", "--no-color"],
+  audit: ["--since", "--project", "--dir", "--limit", "--min-age", "--uncached", "--quick", "--share", "--by-project", "--tune", "--no-calibrate", "--agent", "--json", "--jobs", "--model", "--top", "--no-color"],
   preview: ["--request", "--segment", "--min-age", "--no-decay", "--json", "--no-color"],
   claude: ["--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools", "--quiet"],
   run: ["--openai", "--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools", "--quiet"],

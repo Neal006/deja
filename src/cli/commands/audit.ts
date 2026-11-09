@@ -2,7 +2,9 @@ import { claudeProjectsDir, discoverTranscripts } from "../../audit/discover.js"
 import { aggregate, renderAudit, renderProjects, renderShare, renderTune, type TuneRow } from "../../audit/report.js";
 import { STRATEGIES, type Strategy } from "../../audit/replay.js";
 import { simulateMany } from "../../audit/pool.js";
-import { UNCACHED_BILLING } from "../../audit/billing.js";
+import { OPENAI_BILLING, UNCACHED_BILLING } from "../../audit/billing.js";
+import { codexSessionsDir } from "../../audit/codex.js";
+import type { TranscriptFormat } from "../../audit/worker.js";
 import { calibrate } from "../../core/calibration.js";
 import { readEntries } from "../../core/ledger.js";
 import { DEFAULT_DECAY } from "../../decay/policy.js";
@@ -19,7 +21,15 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
     process.stderr.write(`deja: could not parse --since ${sinceFlag} (try 7d, 2w)\n`);
     return 2;
   }
-  const root = flagString(args.flags, "dir") ?? claudeProjectsDir();
+  const agent = flagString(args.flags, "agent") ?? "claude";
+  if (agent !== "claude" && agent !== "codex") {
+    process.stderr.write(`deja: unknown --agent ${agent} (claude or codex)\n`);
+    return 2;
+  }
+  const format: TranscriptFormat = agent;
+  // Codex runs on OpenAI-style caching: no write premium, cheap reads.
+  const cacheModel = format === "codex" ? { writeMultiplier: OPENAI_BILLING.writeMultiplier, readMultiplier: OPENAI_BILLING.readMultiplier } : {};
+  const root = flagString(args.flags, "dir") ?? (format === "codex" ? codexSessionsDir() : claudeProjectsDir());
   const files = discoverTranscripts(root, {
     since: Date.now() - since,
     match: flagString(args.flags, "project"),
@@ -33,7 +43,13 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
       if (process.stderr.isTTY) process.stderr.write(`\r\x1b[2Ktrying --min-age ${age}…`);
       const stats = await simulateMany(
         files.map((f) => f.path),
-        { strategies: ["baseline", "deja"], decay: { ...DEFAULT_DECAY, minAge: age }, jobs: flagNumber(args.flags, "jobs") },
+        {
+          strategies: ["baseline", "deja"],
+          decay: { ...DEFAULT_DECAY, ...cacheModel, minAge: age },
+          billing: format === "codex" ? OPENAI_BILLING : undefined,
+          format,
+          jobs: flagNumber(args.flags, "jobs"),
+        },
       );
       const r = aggregate(stats, {});
       const base = r.bills.baseline?.cost ?? 0;
@@ -49,13 +65,14 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
   const strategies: readonly Strategy[] = args.flags.quick === true ? [] : STRATEGIES;
   const minAge = flagNumber(args.flags, "min-age");
   const uncached = args.flags.uncached === true;
-  const decay = { ...DEFAULT_DECAY, ...(minAge !== undefined ? { minAge } : {}), ...(uncached ? { uncached: true } : {}) };
+  const decay = { ...DEFAULT_DECAY, ...cacheModel, ...(minAge !== undefined ? { minAge } : {}), ...(uncached ? { uncached: true } : {}) };
   const sessions = await simulateMany(
     files.map((f) => f.path),
     {
       strategies,
       decay,
-      billing: uncached ? UNCACHED_BILLING : undefined,
+      billing: uncached ? UNCACHED_BILLING : format === "codex" ? OPENAI_BILLING : undefined,
+      format,
       jobs: flagNumber(args.flags, "jobs"),
       onProgress: progress ? (done, total) => process.stderr.write(`\r\x1b[2Kreplaying ${done}/${total}…`) : undefined,
     },
@@ -64,7 +81,13 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
 
   // Scale dollar figures by what deja has measured on real traffic, if enough.
   const calibration = args.flags.calibrate === false ? undefined : calibrate(readEntries());
-  const report = aggregate(sessions, { model: flagString(args.flags, "model"), top: flagNumber(args.flags, "top"), uncached, calibration });
+  const report = aggregate(sessions, {
+    model: flagString(args.flags, "model"),
+    top: flagNumber(args.flags, "top"),
+    uncached,
+    calibration,
+    agentName: format === "codex" ? "Codex" : "Claude Code",
+  });
   if (args.flags.share === true) {
     process.stdout.write(`${renderShare(report)}\n`);
   } else if (args.flags.json === true) {
