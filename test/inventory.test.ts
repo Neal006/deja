@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cacheTtlMs, takeInventory } from "../src/decay/inventory.js";
+import { cacheTtlMs, inputPath, takeInventory } from "../src/decay/inventory.js";
 import { code, Conversation } from "./helpers/conversation.js";
 
 const log = Array.from({ length: 100 }, (_, i) => `PASS test/suite-${i}.test.ts (${i} ms) all good here`).join("\n");
@@ -27,6 +27,37 @@ describe("takeInventory", () => {
     expect(item!.saving).toBeGreaterThan(500);
   });
 
+  it("keeps a read young while its file is still being edited", () => {
+    const body = new Conversation()
+      .tool("Read", { file_path: "/repo/a.ts" }, log)
+      .tool("Bash", { command: "ls" }, "x")
+      .tool("Bash", { command: "pwd" }, "x")
+      .tool("Edit", { file_path: "/repo/a.ts", old_string: "a", new_string: "b" }, "ok")
+      .tool("Bash", { command: "date" }, "x")
+      .build();
+    const read = takeInventory(body).items.find((i) => i.id === "toolu_0001")!;
+    // Created 4 requests ago, but touched by the Edit only 1 request ago.
+    expect(read.age).toBe(1);
+  });
+
+  it("does not let a later read refresh an earlier one", () => {
+    const body = new Conversation()
+      .tool("Read", { file_path: "/repo/a.ts" }, log)
+      .tool("Read", { file_path: "/repo/a.ts" }, "short")
+      .tool("Bash", { command: "date" }, "x")
+      .build();
+    expect(takeInventory(body).items.find((i) => i.id === "toolu_0001")!.age).toBe(2);
+  });
+
+  it("does not let a different file refresh an item", () => {
+    const body = new Conversation()
+      .tool("Read", { file_path: "/repo/a.ts" }, log)
+      .tool("Edit", { file_path: "/repo/b.ts", old_string: "a", new_string: "b" }, "ok")
+      .tool("Bash", { command: "date" }, "x")
+      .build();
+    expect(takeInventory(body).items.find((i) => i.id === "toolu_0001")!.age).toBe(2);
+  });
+
   it("skips error results", () => {
     const body = new Conversation().tool("Bash", { command: "x" }, log, true).build();
     expect(takeInventory(body).items).toEqual([]);
@@ -45,5 +76,14 @@ describe("cacheTtlMs", () => {
     const body = new Conversation().build();
     body.messages.push({ role: "user", content: [{ type: "text", text: "x", cache_control: { type: "ephemeral", ttl: "1h" } }] });
     expect(cacheTtlMs(body)).toBe(3_600_000);
+  });
+});
+
+describe("inputPath", () => {
+  it("finds the file a call is about", () => {
+    expect(inputPath({ file_path: "/a" })).toBe("/a");
+    expect(inputPath({ path: "/b", pattern: "x" })).toBe("/b");
+    expect(inputPath({ command: "ls" })).toBeUndefined();
+    expect(inputPath(undefined)).toBeUndefined();
   });
 });
