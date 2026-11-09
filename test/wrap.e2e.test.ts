@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readEntries } from "../src/core/ledger.js";
 import { code, Conversation, numbered } from "./helpers/conversation.js";
-import { writeTranscript } from "./helpers/transcripts.js";
+import { writeCodexRollout, writeTranscript } from "./helpers/transcripts.js";
 
 const run = promisify(execFile);
 const ROOT = join(import.meta.dirname, "..");
@@ -142,4 +142,19 @@ describe("deja --help", () => {
     const short = await run(process.execPath, [join(ROOT, "dist/cli.js"), "-h"]);
     expect(short.stdout).toContain("Usage");
   });
+});
+
+describe("deja audit --agent codex (end to end)", () => {
+  it("replays Codex rollouts", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "deja-codex-e2e-"));
+    for (const n of ["r1", "r2"]) writeCodexRollout(dir, n);
+    const { stdout } = await run(process.execPath, [join(ROOT, "dist/cli.js"), "audit", "--agent", "codex", "--dir", dir, "--since", "all", "--json"], {
+      env: { ...process.env, DEJA_HOME: mkdtempSync(join(tmpdir(), "deja-codex-home-")) },
+    });
+    const r = JSON.parse(stdout) as { agentName: string; sessions: number; compressed: number; pricePerMillion: number };
+    expect(r.agentName).toBe("Codex");
+    expect(r.sessions).toBe(2);
+    expect(r.compressed).toBe(4);
+    expect(r.pricePerMillion).toBe(1.25);
+  }, 60_000);
 });
