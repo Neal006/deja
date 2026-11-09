@@ -17,6 +17,11 @@ export interface Usage {
 const MAX_BUFFER = 1 << 20;
 
 interface RawUsage {
+  // OpenAI style
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  prompt_tokens_details?: { cached_tokens?: number };
+  // Anthropic style
   input_tokens?: number;
   cache_read_input_tokens?: number;
   cache_creation_input_tokens?: number;
@@ -25,6 +30,12 @@ interface RawUsage {
 
 function merge(into: Usage | undefined, raw: RawUsage): Usage {
   const u = into ?? { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
+  if (typeof raw.prompt_tokens === "number") {
+    const cached = raw.prompt_tokens_details?.cached_tokens ?? 0;
+    u.input = raw.prompt_tokens - cached;
+    u.cacheRead = cached;
+  }
+  if (typeof raw.completion_tokens === "number") u.output = raw.completion_tokens;
   if (typeof raw.input_tokens === "number") u.input = raw.input_tokens;
   if (typeof raw.cache_read_input_tokens === "number") u.cacheRead = raw.cache_read_input_tokens;
   if (typeof raw.cache_creation_input_tokens === "number") u.cacheWrite = raw.cache_creation_input_tokens;

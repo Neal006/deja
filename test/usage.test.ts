@@ -44,4 +44,18 @@ describe("UsageSniffer", () => {
     s.feed('event: x\ndata: {"usage": nope}\n');
     expect(s.finish()).toBeUndefined();
   });
+
+  it("reads OpenAI-style usage from the final stream chunk", () => {
+    const s = new UsageSniffer();
+    s.feed('data: {"choices":[{"delta":{"content":"hi"}}]}\n\n');
+    s.feed('data: {"choices":[],"usage":{"prompt_tokens":1000,"completion_tokens":20,"prompt_tokens_details":{"cached_tokens":900}}}\n\n');
+    s.feed("data: [DONE]\n\n");
+    expect(s.finish()).toEqual({ input: 100, cacheRead: 900, cacheWrite: 0, output: 20 });
+  });
+
+  it("reads OpenAI-style usage from a JSON response", () => {
+    const s = new UsageSniffer();
+    s.feed('{"id":"c","usage":{"prompt_tokens":50,"completion_tokens":5}}');
+    expect(s.finish()).toEqual({ input: 50, cacheRead: 0, cacheWrite: 0, output: 5 });
+  });
 });
