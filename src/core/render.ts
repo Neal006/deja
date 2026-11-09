@@ -12,9 +12,8 @@ const ANCHOR_MAX = 60;
 
 export function header(totalLines: number, refLines: number): string {
   return (
-    `${HEADER_OPEN}: ${totalLines} lines, ${refLines} of them identical to text already visible ` +
-    `earlier in this conversation and shown as ${OPEN}references${CLOSE}. ` +
-    `The referenced lines are unchanged and still verbatim earlier in your context.${HEADER_CLOSE}`
+    `${HEADER_OPEN}: ${totalLines} lines; ${refLines} unchanged ones are shown as ${OPEN}references${CLOSE} ` +
+    `to identical text still earlier in your context.${HEADER_CLOSE}`
   );
 }
 
