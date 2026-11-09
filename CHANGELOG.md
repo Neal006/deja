@@ -15,13 +15,14 @@ First release.
 - Proxy for the Anthropic Messages API, OpenAI Chat Completions and the OpenAI Responses API (Codex), with streaming, gzip/brotli passthrough, keep-alive upstream connections and provider usage capture.
 - `deja claude`, `deja run [--openai]`, `deja start`: run agents through deja, on Linux, macOS and Windows.
 - `dejaFetch()`: in-process deja for agents built on the Anthropic or OpenAI SDKs.
-- `x-deja: off` request header to bypass deja for one request.
+- `x-deja: off` request header to bypass deja for one request, and a local `GET /deja/health` endpoint.
 
 ### Measurement
-- `deja audit`: replay local Claude Code history under four strategies with exact-prefix cache billing, in parallel worker threads. Reports compaction headroom, how often stubbed targets were called again, per-project tables (`--by-project`), a share card (`--share`) and cacheless billing (`--uncached`).
+- `deja audit`: replay local Claude Code history (main sessions and subagents) under four strategies with exact-prefix cache billing, in parallel worker threads. Reports compaction headroom, how often stubbed targets were called again, per-project tables (`--by-project`), a share card (`--share`), cacheless billing (`--uncached`) and a personal staleness sweep with a recommendation (`--tune`).
 - `deja preview`: show exactly what deja would have sent at any request of a past session.
 - `deja stats`: estimated savings, a 14-day sparkline, provider-measured cache reads and writes, estimator accuracy, stub re-run rate, per-model breakdown (`--by-model`), `--reset`.
 
 ### Tooling
-- `deja doctor`, `deja setup statusline`, `deja statusline`, `deja completion bash|zsh|fish`, `deja start --log`.
+- `deja doctor` (including a check for base-URL overrides in Claude Code settings), `deja setup statusline`, `deja statusline`, `deja completion bash|zsh|fish`, `deja start --log`.
+- Friendly errors for a missing agent or a busy port, a start-up line for wrapped agents, and a savings summary when the proxy stops.
 - Test suite with fuzzing of lossless dedup, prefix determinism and incremental equivalence, plus an end-to-end check of the ski-rental competitive ratio.
