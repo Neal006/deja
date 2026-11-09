@@ -1,0 +1,5 @@
+{
+  "prompt": "The tests in this project fail. Run them with `node --test`, find the bugs in src/cart.js and fix them until every test passes. Do not change anything in test/. When you are done, run the tests once more to confirm.",
+  "allowedTools": "Read Edit Write Glob Grep Bash(node --test) Bash(node --test:*) Bash(npm test) Bash(npm test:*)",
+  "maxTurns": 30
+}

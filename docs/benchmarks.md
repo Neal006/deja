@@ -64,3 +64,19 @@ npx dejactx audit --share            # content-free summary card
 ```
 
 Please share your numbers through the issue template so the defaults can be tuned on more than one person's work.
+
+## Task success: does the agent still finish the job?
+
+Token savings mean nothing if the agent gets worse at the task. `npm run bench:quality` checks this directly. It runs Claude Code headless on each task in `bench/tasks`, once with deja off (`deja --off`, so the same proxy forwards requests untouched) and once with deja on, every run in a fresh copy of the task's repo. A run passes when the task's `check.mjs` exits 0. Cost and tokens come from Claude Code's own JSON result, so both sides are measured the same way.
+
+```bash
+npm run bench:quality                          # 3 runs per task and side, Haiku
+npm run bench:quality -- --runs 5 --model sonnet --task fix-cart
+```
+
+| task | what the agent must do | how it's checked |
+|---|---|---|
+| `fix-cart` | find and fix three bugs in one file by running the tests repeatedly | tests pass and `test/` is unchanged |
+| `rename-units` | rename every function in three files to camelCase and update all callers | tests pass, `test/` is unchanged, no snake_case function names left |
+
+It needs Claude Code, git and an API key or login, and it spends real money (runs × tasks × 2 sessions). No results are published here yet. Two small tasks can catch a regression but can't prove there is none, so add tasks that look like your own work: a folder with `repo/`, `task.json` (`prompt`, `allowedTools`, `maxTurns`) and `check.mjs`.
