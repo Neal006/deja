@@ -24,6 +24,18 @@ Reading the table:
 - **Dedup alone is small** (0.5%) on Claude Code, which already avoids many verbatim re-reads. Its value is that it's free: it never edits old messages, so it never costs a cache rewrite.
 - Eager pruning can shrink the average prompt *more* than deja and still cost more money. Prompt size isn't the bill; cache behaviour is.
 
+## Without a prompt cache
+
+Local models and many OpenAI-compatible endpoints don't cache prompts, so every token of every request is billed (or computed) in full. `deja audit --uncached` replays the same history under that model:
+
+| strategy | input tokens | avg prompt |
+|---|---|---|
+| as recorded | — | 91.8k |
+| eager pruning | −40.9% | |
+| **deja `--uncached`** | **−41.5%** | **53.7k** |
+
+With no cache there's no rewrite penalty, so evicting eagerly is right, and that's what `--uncached` does (plus dedup). The difference from the cached case is the point: the right eviction policy depends on the provider's cache, and deja picks it from one flag.
+
 ## Auto-compaction headroom
 
 Claude Code compacts the conversation when the context fills up, and compaction summaries lose detail. In this dataset it compacted 9 times. At each of those moments the recorded context held **137.0k tokens** on average. Replayed with deja, the same moments would have held **77.2k**: 43.7% less, so compaction would have fired much later or not at all in shorter sessions.
