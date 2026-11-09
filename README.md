@@ -153,6 +153,8 @@ const client = new Anthropic({ fetch: dejaFetch() });
 
 `dejaFetch` rewrites Messages, Chat Completions and Responses API calls exactly as the proxy does, and passes everything else through. The engines (`transformRequest`, `decide`, `CacheBiller`, …) are exported too.
 
+To send one request untouched, add the header `x-deja: off`. deja strips the header and forwards the original bytes.
+
 ## Safety
 
 - **Fails open.** If deja can't parse or transform a request, it forwards the original bytes.
