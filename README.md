@@ -1,5 +1,10 @@
 # deja
 
+[![ci](https://github.com/Neal006/deja/actions/workflows/ci.yml/badge.svg)](https://github.com/Neal006/deja/actions/workflows/ci.yml)
+[![deja](https://img.shields.io/badge/deja---30.3%25%20input%20bill-8a2be2)](#the-problem-nobody-measures)
+![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-blue)
+
 **Your coding agent pays for the same context over and over. deja stops that, and doesn't break your prompt cache doing it.**
 
 ```
@@ -15,7 +20,7 @@ On 48 real Claude Code sessions (2,740 API requests), replayed request by reques
 | eager pruning (what context pruners do) | −14.1% | |
 | **deja** | **−31.0%** | **55.9k** |
 
-Run `npx dejactx audit` to get this table for your own history.
+Run `npx dejactx audit` to get this table for your own history, and `npx dejactx audit --share` for a card you can post.
 
 ---
 
