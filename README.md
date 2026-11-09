@@ -83,7 +83,7 @@ Stale tool output, and the bodies of files the agent wrote long ago, can be repl
 - **Keeping** *D* stale tokens costs *rent*: *D* × 0.1 on every request.
 - **Evicting** them changes the prompt at position *p*, so the suffix *S* after *p* must be re-cached once. That's a *purchase* of 1.25 × (*S* − *D*) − 0.1 × *S*.
 
-This is the classic **ski-rental problem**. deja pays rent until the rent paid equals the purchase price, then buys. That rule is provably never worse than **2× the optimal schedule**, without knowing how long the session will last. And when you've been idle longer than the cache TTL, the cache is already gone, so eviction is free and deja does it immediately.
+This is the classic **ski-rental problem**. deja pays rent until the rent paid equals the purchase price, then buys. In the textbook version (one item, a fixed purchase price) that rule is never worse than **2× the best schedule chosen in hindsight**, without knowing how long the session will last. Real sessions have many items and a purchase price that moves, so deja doesn't claim a proof there; [an end-to-end test](docs/design.md#checked-not-just-claimed) checks the 2× bound on randomized sessions instead. And when you've been idle longer than the cache TTL, the cache is already gone, so eviction is free and deja does it immediately.
 
 Evictions are sticky and persisted, so after an eviction the new prefix is stable and cacheable again.
 
@@ -92,6 +92,8 @@ Evictions are sticky and persisted, so after an eviction the new prefix is stabl
 | approach | what it does | prompt cache | the catch |
 |---|---|---|---|
 | **auto-compaction** (built into agents) | summarises the conversation when the window fills | rebuilt from scratch | lossy, and only kicks in at the limit |
+| **Claude Code's unchanged re-read check** (built in) | answers a Read of an unchanged file with "unchanged since last read" | preserved | exact repeats of `Read` only: misses edited files, partial ranges and repeated `Bash` output; complementary to deja |
+| **Anthropic context editing** (`clear_tool_uses`, server-side) | clears the oldest tool results once the prompt passes a token threshold | broken at the clear point | you pick fixed thresholds (`trigger`, `keep`, `clear_at_least`) yourself; no idle-cache awareness or dedup; your agent must send the setting |
 | **eager context pruning** | drops old tool results as soon as they're old | broken on every prune | can cost *more* than doing nothing (see above) |
 | **TTL-only pruning** | prunes only after the cache has expired | preserved | misses every saving inside an active session |
 | **output filters** (shorter test/build logs) | shrink tool output before the agent sees it | unaffected | lossy at the source; complementary to deja |

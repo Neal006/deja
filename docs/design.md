@@ -73,7 +73,7 @@ Let *D* be the tokens saved by stubbing the current candidates, *p* the earliest
 - **Rent.** Keeping them costs 0.1·*D* on every request.
 - **Buy.** Evicting now costs this request 1.25·(*S* − *D*) instead of 0.1·*S*, a one-off premium *B* = max(0, 1.25·(*S* − *D*) − 0.1·*S*).
 
-Not knowing how many more requests the session will make, the deterministic rule "**accumulate rent; buy once the rent paid reaches *B***" is 2-competitive, the classic ski-rental result. deja implements exactly that rule, per conversation, with these refinements:
+Not knowing how many more requests the session will make, the deterministic rule "**accumulate rent; buy once the rent paid reaches *B***" is 2-competitive, the classic ski-rental result. That proof assumes one item with a fixed purchase price. In a real session several items go stale at different times, and *S* (so *B*) grows with every request, so the textbook bound does not carry over as a theorem; the next section checks it empirically instead. deja implements the rule per conversation, with these refinements:
 
 - **Free purchases.** If the previous request was more than one cache TTL ago (it detects the 1-hour TTL when the client asks for it), the cache has expired and every token will be written anyway, so *B* = 0 and deja evicts immediately.
 - **Batching.** All current candidates are bought together, so one cache rewrite covers many items.
@@ -83,6 +83,8 @@ Not knowing how many more requests the session will make, the deterministic rule
 ### Checked, not just claimed
 
 `test/competitive.test.ts` runs the real policy, the real rewriter and the billing model on 40 randomized sessions. In half of them the stale output is small next to later output, which makes eviction expensive. Each run is compared against the best eviction schedule chosen *in hindsight*. Across the seeds the worst ratio is **1.17×** (the theory allows 2×), and the test fails if any session exceeds 2×.
+
+What this covers, and what it doesn't: each test session has **one** stale output, and the hindsight optimum is the best of "never evict" and "evict from request *t* onward". Sessions with many overlapping stale items, and schedules that evict in several steps, are not checked yet.
 
 ### Interaction with dedup
 
