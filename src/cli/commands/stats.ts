@@ -1,19 +1,34 @@
 import { ledgerPath, readEntries, totals, type LedgerEntry, type Totals } from "../../core/ledger.js";
 import { formatTokens } from "../../core/tokens.js";
 import { flagString, parseDuration, type ParsedArgs } from "../args.js";
-import { bar, paint, percent, usd, useColor } from "../format.js";
+import { bar, paint, percent, sparkline, usd, useColor } from "../format.js";
 
 const DAY = 86_400_000;
 
 export interface StatsReport {
   ledger: string;
   windows: Array<{ name: string; totals: Totals }>;
+  /** Tokens saved per day, oldest first, ending today. */
+  daily: number[];
+}
+
+/** Saved tokens per calendar day (UTC) for the last `days` days. */
+export function dailySaved(entries: LedgerEntry[], now: number, days = 14): number[] {
+  const out = new Array<number>(days).fill(0);
+  const today = Math.floor(now / DAY);
+  for (const e of entries) {
+    const idx = days - 1 - (today - Math.floor(e.t / DAY));
+    if (idx >= 0 && idx < days) out[idx]! += e.tokensBefore - e.tokensAfter;
+  }
+  return out;
 }
 
 export function buildReport(entries: LedgerEntry[], now: number, since?: number, ledger = ledgerPath()): StatsReport {
-  if (since !== undefined) return { ledger, windows: [{ name: "selected", totals: totals(entries, now - since) }] };
+  const daily = dailySaved(entries, now);
+  if (since !== undefined) return { ledger, daily, windows: [{ name: "selected", totals: totals(entries, now - since) }] };
   return {
     ledger,
+    daily,
     windows: [
       { name: "last 24h", totals: totals(entries, now - DAY) },
       { name: "last 7 days", totals: totals(entries, now - 7 * DAY) },
@@ -38,6 +53,9 @@ export function renderReport(report: StatsReport, color: boolean): string {
       `${w.name.padEnd(12)} ${p.green(bar(frac, 20))} ${p.bold(formatTokens(t.saved).padStart(7))} tokens ` +
         `${p.dim(`(${percent(t.saved, t.tokensBefore)} of tool output, ${t.requests} requests)`)}  ${p.yellow(`≈ ${usd(t.usd)}`)}`,
     );
+  }
+  if (report.daily.some((d) => d > 0)) {
+    lines.push(`${"last 14 days".padEnd(12)} ${p.green(sparkline(report.daily))}`);
   }
   if (all.measured > 0) {
     const prompt = all.input + all.cacheRead + all.cacheWrite;

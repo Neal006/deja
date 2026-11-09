@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildReport, renderReport } from "../src/cli/commands/stats.js";
+import { buildReport, dailySaved, renderReport } from "../src/cli/commands/stats.js";
 import { eventLine } from "../src/cli/commands/start.js";
 import { summaryLine } from "../src/cli/commands/wrap.js";
 import type { LedgerEntry } from "../src/core/ledger.js";
@@ -24,6 +24,13 @@ describe("buildReport", () => {
   });
 });
 
+describe("dailySaved", () => {
+  it("buckets savings by day ending today", () => {
+    const d = dailySaved([entry(NOW - 1000, 10), entry(NOW - DAY, 5), entry(NOW - 30 * DAY, 99)], NOW, 3);
+    expect(d).toEqual([0, 5, 10]);
+  });
+});
+
 describe("renderReport", () => {
   it("explains how to start when empty", () => {
     expect(renderReport(buildReport([], NOW, undefined, "/l"), false)).toContain("deja claude");
@@ -34,6 +41,7 @@ describe("renderReport", () => {
     expect(out).toContain("5.00k");
     expect(out).toContain("50.0%");
     expect(out).toContain("≈ $0.0050");
+    expect(out).toContain("last 14 days");
   });
 });
 
