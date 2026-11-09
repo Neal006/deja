@@ -1,5 +1,6 @@
 import { createServer, request as httpRequest, type IncomingHttpHeaders, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { request as httpsRequest } from "node:https";
+import { IncrementalCache } from "../anthropic/incremental.js";
 import { transformRequest, type TransformOptions, type TransformStats } from "../anthropic/transform.js";
 import { isMessagesRequest, type MessagesRequest } from "../anthropic/types.js";
 import { fromAnthropic, toAnthropic } from "../openai/adapter.js";
@@ -51,6 +52,11 @@ export interface ProxyOptions {
   enabled?: boolean;
   /** Cache-aware eviction of stale context. Omit to run dedup only. */
   decay?: DecayOptions;
+  /**
+   * Per-conversation incremental engines, so each request only processes
+   * the messages it adds. Omit to transform every request from scratch.
+   */
+  incremental?: IncrementalCache;
 }
 
 const HOP_BY_HOP = new Set([
@@ -125,6 +131,7 @@ export function rewriteBody(
     return { body };
   }
   const started = performance.now();
+  const isCount = path.split("?")[0]!.endsWith("/count_tokens");
   // Map every supported API onto the engine's Anthropic shape, and keep a
   // way back to the original format for the rewritten result.
   let parsed: MessagesRequest;
@@ -151,7 +158,6 @@ export function rewriteBody(
   if (opts.decay) {
     const key = takeInventory(parsed).key;
     if (key) {
-      const isCount = path.split("?")[0]!.endsWith("/count_tokens");
       if (isCount) {
         // Token counting must reflect what we would send, but is not a turn.
         evict = new Set(opts.decay.store.peek(key)?.evicted ?? []);
@@ -170,7 +176,11 @@ export function rewriteBody(
       }
     }
   }
-  const result = transformRequest(parsed, { ...opts.transform, evict });
+  const key = opts.incremental ? takeInventory(parsed).key : undefined;
+  const result =
+    key && opts.incremental
+      ? opts.incremental.get(`${kind}:${isCount ? "count:" : ""}${key}`).transform(parsed, { ...opts.transform, evict })
+      : transformRequest(parsed, { ...opts.transform, evict });
   const out = back(result.body, result.changed);
   const event: ProxyEvent = {
     path,
@@ -220,7 +230,8 @@ function decoded(stream: Readable, encoding: string | string[] | undefined): Rea
   }
 }
 
-export function createProxy(opts: ProxyOptions = {}): Server {
+export function createProxy(input: ProxyOptions = {}): Server {
+  const opts: ProxyOptions = { incremental: new IncrementalCache(), ...input };
   const upstream = new URL(opts.upstream ?? DEFAULT_UPSTREAM);
   const send = upstream.protocol === "http:" ? httpRequest : httpsRequest;
   const basePath = upstream.pathname.replace(/\/$/, "");
