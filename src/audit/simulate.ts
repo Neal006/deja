@@ -1,5 +1,6 @@
 import { transformRequest } from "../anthropic/transform.js";
 import { CACHE_READ_MULTIPLIER, CACHE_WRITE_MULTIPLIER } from "../core/pricing.js";
+import { addBill, emptyBill, replayAll, type ReplayOptions, type Strategy, type StrategyBills } from "./replay.js";
 import { resendCounts, type Transcript } from "./transcript.js";
 
 /**
@@ -21,12 +22,15 @@ export interface TargetStat {
   saved: number;
   /** Tokens deja removed, multiplied by how often they were resent. */
   savedSent: number;
+  /** Original tokens multiplied by how many requests carried them. */
+  sent: number;
 }
 
 export interface SessionStat {
   path: string;
   sessionId?: string;
   cwd?: string;
+  model?: string;
   start?: number;
   end?: number;
   requests: number;
@@ -41,13 +45,21 @@ export interface SessionStat {
   /** Savings expressed in "base input token" units, cache-aware. */
   weightedSaved: number;
   targets: Map<string, TargetStat>;
+  /** Cache-aware bills per strategy, when replayed. */
+  bills?: Partial<StrategyBills>;
 }
 
-export function simulate(t: Transcript): SessionStat {
+export interface SimulateOptions extends ReplayOptions {
+  /** Strategies to replay and bill. Empty skips the (slower) replay. */
+  strategies?: readonly Strategy[];
+}
+
+export function simulate(t: Transcript, opts: SimulateOptions = {}): SessionStat {
   const s: SessionStat = {
     path: t.path,
     sessionId: t.sessionId,
     cwd: t.cwd,
+    model: t.model,
     start: t.start,
     end: t.end,
     requests: 0,
@@ -73,13 +85,14 @@ export function simulate(t: Transcript): SessionStat {
           const saved = info.tokensBefore - info.tokensAfter;
           let ts = s.targets.get(info.target);
           if (!ts) {
-            ts = { target: info.target, tool: info.tool, calls: 0, tokens: 0, saved: 0, savedSent: 0 };
+            ts = { target: info.target, tool: info.tool, calls: 0, tokens: 0, saved: 0, savedSent: 0, sent: 0 };
             s.targets.set(info.target, ts);
           }
           ts.calls++;
           ts.tokens += info.tokensBefore;
           ts.saved += saved;
           ts.savedSent += saved * resends;
+          ts.sent += info.tokensBefore * resends;
         },
       },
     );
@@ -97,6 +110,12 @@ export function simulate(t: Transcript): SessionStat {
         s.weightedSaved += saved * (CACHE_WRITE_MULTIPLIER + (resends - 1) * CACHE_READ_MULTIPLIER);
       }
     });
+    const strategies = opts.strategies ?? [];
+    if (strategies.length > 0) {
+      const bills = replayAll(seg, { ...opts, cwd: t.cwd }, strategies);
+      s.bills ??= {};
+      for (const k of strategies) s.bills[k] = addBill(s.bills[k] ?? emptyBill(), bills[k]!);
+    }
   }
   return s;
 }
