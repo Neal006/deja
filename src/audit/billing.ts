@@ -31,6 +31,13 @@ export const DEFAULT_BILLING: BillingConfig = {
   readMultiplier: CACHE_READ_MULTIPLIER,
 };
 
+/** Billing for providers without a prompt cache: every token at full price. */
+export const UNCACHED_BILLING: BillingConfig = {
+  ...DEFAULT_BILLING,
+  writeMultiplier: 1,
+  readMultiplier: 1,
+};
+
 export function messageHash(m: Message): string {
   return createHash("sha1").update(JSON.stringify(m)).digest("base64");
 }
