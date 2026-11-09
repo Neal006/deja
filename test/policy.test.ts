@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MessagesRequest } from "../src/anthropic/types.js";
-import { decayFromEnv, decide, DEFAULT_DECAY, freshState } from "../src/decay/policy.js";
+import { decayFromEnv, decide, DEFAULT_DECAY, freshState, NON_REPLAYABLE_TOOLS } from "../src/decay/policy.js";
 import { Conversation } from "./helpers/conversation.js";
 
 const log = Array.from({ length: 200 }, (_, i) => `PASS test/suite-${i}.test.ts (${i} ms) all good here`).join("\n");
@@ -88,6 +88,15 @@ describe("decide", () => {
     expect(d.evict.size).toBe(0);
   });
 
+  it("never evicts output that cannot be re-created", () => {
+    const answers = Array.from({ length: 200 }, (_, i) => `answer ${i}: the user picked option ${i % 3}`).join("\n");
+    const c = new Conversation().tool("AskUserQuestion", { questions: [] }, answers).tool("Agent", { prompt: "research" }, answers);
+    for (let i = 0; i < 8; i++) c.tool("Bash", { command: `echo ${i}` }, "ok");
+    const d = decide(c.build(), freshState(), 0);
+    expect(d.evict.has("toolu_0001")).toBe(false);
+    expect(d.evict.has("toolu_0002")).toBe(false);
+  });
+
   it("updates lastSeen", () => {
     const s = freshState();
     decide(session(0), s, 1234);
@@ -107,5 +116,14 @@ describe("decayFromEnv", () => {
   });
   it("ignores invalid values", () => {
     expect(decayFromEnv({ DEJA_MIN_AGE: "-1", DEJA_MIN_SAVING: "lots" })).toEqual(DEFAULT_DECAY);
+  });
+});
+
+describe("NON_REPLAYABLE_TOOLS", () => {
+  it("covers user answers and subagent reports", () => {
+    for (const t of ["AskUserQuestion", "Agent", "Task", "Skill"]) expect(NON_REPLAYABLE_TOOLS.has(t)).toBe(true);
+  });
+  it("leaves re-runnable tools decayable", () => {
+    for (const t of ["Bash", "Read", "Grep"]) expect(NON_REPLAYABLE_TOOLS.has(t)).toBe(false);
   });
 });

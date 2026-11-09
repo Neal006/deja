@@ -58,6 +58,24 @@ export function decayFromEnv(env: NodeJS.ProcessEnv = process.env, base: DecayCo
   };
 }
 
+/**
+ * Tools whose output cannot be cheaply or safely re-created, so a stub's
+ * "run the tool again" would be wrong: answers the user gave, reports from
+ * whole subagent runs, and instructions the agent must keep following.
+ * Their output never decays.
+ */
+export const NON_REPLAYABLE_TOOLS: ReadonlySet<string> = new Set([
+  "AskUserQuestion",
+  "Agent",
+  "Task",
+  "Skill",
+  "ExitPlanMode",
+  "EnterPlanMode",
+  "TodoWrite",
+  "ask_followup_question",
+  "attempt_completion",
+]);
+
 export interface ConversationState {
   /** Rent paid since the last eviction, in base-token units. */
   rent: number;
@@ -91,7 +109,7 @@ export interface DecayDecision {
 export function decide(body: MessagesRequest, state: ConversationState, now: number, cfg: DecayConfig = DEFAULT_DECAY): DecayDecision {
   const inv = takeInventory(body);
   const evict = new Set(state.evicted);
-  const skip = new Set(cfg.skipTools ?? []);
+  const skip = new Set([...NON_REPLAYABLE_TOOLS, ...(cfg.skipTools ?? [])]);
   const candidates = inv.items.filter(
     (it) => !evict.has(it.id) && !skip.has(it.tool) && it.age >= cfg.minAge && it.saving >= cfg.minSaving,
   );
