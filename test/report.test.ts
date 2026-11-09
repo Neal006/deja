@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregate, dollars, dominantModel, renderAudit, renderProjects, renderShare } from "../src/audit/report.js";
+import { aggregate, dollars, dominantModel, recommend, renderAudit, renderProjects, renderShare, renderTune } from "../src/audit/report.js";
 import type { Bill } from "../src/audit/billing.js";
 import type { SessionStat } from "../src/audit/simulate.js";
 
@@ -181,5 +181,31 @@ describe("uncached reports", () => {
   it("say that nothing was cached", () => {
     const out = renderAudit(aggregate([session()], { env: {}, uncached: true }), false);
     expect(out).toContain("no prompt cache");
+  });
+});
+
+describe("tuning", () => {
+  const rows = [
+    { minAge: 3, cut: 0.324, rerunRate: 0.3 },
+    { minAge: 5, cut: 0.318, rerunRate: 0.25 },
+    { minAge: 8, cut: 0.29, rerunRate: 0.2 },
+  ];
+
+  it("prefers a more conservative setting within two points of the best", () => {
+    expect(recommend(rows)!.minAge).toBe(5);
+  });
+
+  it("takes the best when nothing else is close", () => {
+    expect(recommend([{ minAge: 3, cut: 0.4, rerunRate: 0 }, { minAge: 8, cut: 0.37, rerunRate: 0 }])!.minAge).toBe(3);
+  });
+
+  it("returns nothing without rows", () => {
+    expect(recommend([])).toBeUndefined();
+  });
+
+  it("renders the sweep with a recommendation", () => {
+    const out = renderTune(rows, false);
+    expect(out).toMatch(/--min-age 5 +31\.8% +25\.0% re-run ← recommended/);
+    expect(out).toContain("deja --min-age 5 claude");
   });
 });

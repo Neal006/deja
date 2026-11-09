@@ -298,3 +298,41 @@ export function renderShare(r: AuditReport): string {
   const badge = `[![deja](https://img.shields.io/badge/deja-${encodeURIComponent(`${pct} input bill`).replace(/-/g, "--")}-8a2be2)](https://${REPO})`;
   return [...box, "", badge].join("\n");
 }
+
+export interface TuneRow {
+  minAge: number;
+  /** Fractional cut of the input bill versus baseline (0.3 = 30% cheaper). */
+  cut: number;
+  /** Share of stubbed outputs whose target was called again later. */
+  rerunRate: number;
+}
+
+/**
+ * Pick the staleness threshold to recommend: the cheapest one, unless a
+ * more conservative setting is within two percentage points of it, in which
+ * case prefer the conservative one (stubs later, so the model is less likely
+ * to need them back, for almost the same savings).
+ */
+export function recommend(rows: TuneRow[]): TuneRow | undefined {
+  if (rows.length === 0) return undefined;
+  const best = Math.max(...rows.map((r) => r.cut));
+  const near = rows.filter((r) => best - r.cut <= 0.02);
+  return near.reduce((a, b) => (b.minAge > a.minAge ? b : a));
+}
+
+export function renderTune(rows: TuneRow[], color: boolean): string {
+  const p = paint(color);
+  const pick = recommend(rows);
+  const out = [p.bold("  staleness threshold sweep") + p.dim("  (input bill cut vs. as recorded · stubbed targets called again)")];
+  for (const r of rows) {
+    const mark = pick && r.minAge === pick.minAge ? p.green(" ← recommended") : "";
+    out.push(
+      `    --min-age ${String(r.minAge).padEnd(3)} ${p.bold(`${(r.cut * 100).toFixed(1)}%`.padStart(6))}   ${p.dim(`${(r.rerunRate * 100).toFixed(1)}% re-run`)}${mark}`,
+    );
+  }
+  if (pick) {
+    out.push("");
+    out.push(`  apply it with  ${p.cyan(`deja --min-age ${pick.minAge} claude`)}  or  ${p.cyan(`export DEJA_MIN_AGE=${pick.minAge}`)}`);
+  }
+  return out.join("\n");
+}
