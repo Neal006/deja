@@ -35,6 +35,13 @@ describe("parseTranscript", () => {
     expect(t.end).toBe(Date.parse("2026-11-01T10:00:05Z"));
   });
 
+  it("records a timestamp per message", () => {
+    const seg = parseTranscript(sample()).segments[0]!;
+    expect(seg.times).toHaveLength(seg.messages.length);
+    expect(seg.times[0]).toBe(Date.parse("2026-11-01T10:00:00Z"));
+    expect(seg.times[2]).toBeUndefined();
+  });
+
   it("starts a new segment at a compact boundary", () => {
     const text = [
       L({ type: "user", message: { role: "user", content: "a" } }),

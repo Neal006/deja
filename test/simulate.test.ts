@@ -13,7 +13,7 @@ function transcript(): Transcript {
   // End with an assistant reply so the last tool result is resent once.
   const messages = conv.build().messages;
   messages.push({ role: "assistant", content: [{ type: "text", text: "done" }] });
-  return { path: "/t.jsonl", cwd: "/repo", segments: [{ messages }] };
+  return { path: "/t.jsonl", cwd: "/repo", segments: [{ messages, times: [] }] };
 }
 
 describe("simulate", () => {

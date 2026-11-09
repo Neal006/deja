@@ -13,6 +13,8 @@ import type { ContentBlock, Message } from "../anthropic/types.js";
 
 export interface Segment {
   messages: Message[];
+  /** When each message was first seen (epoch ms), aligned with `messages`. */
+  times: Array<number | undefined>;
 }
 
 export interface Transcript {
@@ -45,11 +47,13 @@ function blocks(content: unknown): ContentBlock[] {
 export function parseTranscript(text: string, path = "<memory>"): Transcript {
   const t: Transcript = { path, segments: [] };
   let messages: Message[] = [];
+  let times: Array<number | undefined> = [];
   let lastAssistantId: string | undefined;
 
   const closeSegment = () => {
-    if (messages.length > 0) t.segments.push({ messages });
+    if (messages.length > 0) t.segments.push({ messages, times });
     messages = [];
+    times = [];
     lastAssistantId = undefined;
   };
 
@@ -61,9 +65,11 @@ export function parseTranscript(text: string, path = "<memory>"): Transcript {
     } catch {
       continue;
     }
+    let ts: number | undefined;
     if (line.timestamp) {
-      const ts = Date.parse(line.timestamp);
-      if (Number.isFinite(ts)) {
+      const parsed = Date.parse(line.timestamp);
+      if (Number.isFinite(parsed)) {
+        ts = parsed;
         t.start = t.start === undefined ? ts : Math.min(t.start, ts);
         t.end = t.end === undefined ? ts : Math.max(t.end, ts);
       }
@@ -93,6 +99,7 @@ export function parseTranscript(text: string, path = "<memory>"): Transcript {
       continue;
     }
     messages.push({ role, content: [...content] });
+    times.push(ts);
     if (role === "assistant") lastAssistantId = msg.id;
   }
   closeSegment();
