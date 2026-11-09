@@ -1,7 +1,7 @@
 # deja
 
 [![ci](https://github.com/Neal006/deja/actions/workflows/ci.yml/badge.svg)](https://github.com/Neal006/deja/actions/workflows/ci.yml)
-[![deja](https://img.shields.io/badge/deja---30.4%25%20input%20bill-8a2be2)](#the-problem-nobody-measures)
+[![deja](https://img.shields.io/badge/deja---30.7%25%20input%20bill-8a2be2)](#the-problem-nobody-measures)
 ![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
@@ -12,13 +12,13 @@ npx dejactx audit      # what did stale context cost you? (reads local history, 
 npx dejactx claude     # run Claude Code through deja
 ```
 
-On 48 real Claude Code sessions (2,779 API requests), replayed request by request with exact prompt-cache billing:
+On 51 real Claude Code sessions (2,922 API requests), replayed request by request with exact prompt-cache billing:
 
 | strategy | input bill | average prompt |
 |---|---|---|
-| as it happened | — | 88.8k tokens |
-| eager pruning (what context pruners do) | −14.1% | 52.6k |
-| **deja** | **−30.4%** | **57.2k** |
+| as it happened | — | 95.8k tokens |
+| eager pruning (what context pruners do) | −15.8% | 56.8k |
+| **deja** | **−30.7%** | **61.5k** |
 
 It also means fewer forgetful moments. In this history, Claude Code auto-compacted its context 9 times, each time with about **137k tokens** in context. With deja, the same moments would have held about **77k**, so compaction (and the detail it throws away) comes much later.
 
@@ -36,13 +36,13 @@ Every API request an agent makes resends the **entire** conversation. A 400-line
 
 Prompt caching makes those resends cheaper (0.1× price), but not free. They also fill the context window, which triggers lossy auto-compaction sooner.
 
-The obvious fix is to prune old tool output. **It backfires.** The prompt cache matches on an exact prefix, so editing an old message invalidates everything after it, and the whole tail is re-billed at 1.25×. Prune eagerly and you keep paying for cache rewrites. In the replay, eager pruning that waits 20 requests before pruning cost **26% more than doing nothing at all**:
+The obvious fix is to prune old tool output. **It backfires.** The prompt cache matches on an exact prefix, so editing an old message invalidates everything after it, and the whole tail is re-billed at 1.25×. Prune eagerly and you keep paying for cache rewrites. In the replay, eager pruning that waits 20 requests before pruning cost **22% more than doing nothing at all**:
 
 | output counts as stale after | eager pruning | deja |
 |---|---|---|
-| 5 requests | −14.1% | **−30.4%** |
-| 10 requests | +3.1% | **−26.4%** |
-| 20 requests | **+26.0%** | **−21.1%** |
+| 5 requests | −15.8% | **−30.7%** |
+| 10 requests | +0.2% | **−27.0%** |
+| 20 requests | **+21.6%** | **−21.9%** |
 
 (Reproduce with `npx dejactx audit --min-age 20`.)
 
@@ -142,7 +142,7 @@ npx dejactx run --openai -- aider --model gpt-5           # wraps the agent
 npx dejactx start --upstream https://openrouter.ai/api     # or point the agent's base URL at http://127.0.0.1:8787/v1
 ```
 
-For providers with no prompt cache at all (most local models), add `--uncached`: every request is billed in full there, so stale output is evicted as soon as it goes stale. Replaying the same 48 sessions that way, deja cuts **41.5% of input tokens** (`deja audit --uncached`).
+For providers with no prompt cache at all (most local models), add `--uncached`: every request is billed in full there, so stale output is evicted as soon as it goes stale. Replaying the same 51 sessions that way, deja cuts **41.3% of input tokens** (`deja audit --uncached`).
 
 | flag | meaning |
 |---|---|
