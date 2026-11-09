@@ -17,6 +17,7 @@ Usage
   deja run --openai -- <cmd>       run an OpenAI-compatible agent through deja
   deja start [--port 8787]         run the proxy in the foreground
   deja stats [--since 7d] [--json] show what deja has saved
+  deja doctor                      check your setup
   deja help | --version
 
 Options
