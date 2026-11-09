@@ -5,6 +5,7 @@ import { dejaHome } from "../../core/ledger.js";
 import { formatTokens } from "../../core/tokens.js";
 import { decayFromEnv, type DecayConfig } from "../../decay/policy.js";
 import { StateStore } from "../../decay/store.js";
+import { removeLive, writeLive } from "../../proxy/live.js";
 import { recorder } from "../../proxy/record.js";
 import { createProxy, type ProxyEvent } from "../../proxy/server.js";
 import { flagNumber, flagString, type ParsedArgs } from "../args.js";
@@ -33,6 +34,8 @@ export function startProxy(opts: {
   onEvent?: (e: ProxyEvent) => void;
 }): Promise<StartedProxy> {
   const rec = recorder(opts.ledger);
+  let port = 0;
+  const started = Date.now();
   const server = createProxy({
     upstream: opts.upstream,
     enabled: opts.enabled,
@@ -42,13 +45,19 @@ export function startProxy(opts: {
         : { store: new StateStore(join(dejaHome(), "decay-state.json")), config: opts.decayConfig ?? decayFromEnv() },
     onRequest: (e) => {
       rec.onRequest(e);
+      try {
+        writeLive({ port, pid: process.pid, started, ...rec.tally, evicted: e.decay?.evicted ?? 0 });
+      } catch {
+        // The status line is a nicety; never fail a request over it.
+      }
       opts.onEvent?.(e);
     },
   });
+  server.on("close", () => removeLive(port));
   return new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(opts.port, "127.0.0.1", () => {
-      const port = (server.address() as AddressInfo).port;
+      port = (server.address() as AddressInfo).port;
       resolve({ server, port, url: `http://127.0.0.1:${port}`, upstream: opts.upstream, tally: rec.tally });
     });
   });
