@@ -189,7 +189,7 @@ References are plain text the model reads like any other annotation, and they po
 It still works. deja just pushes it further away. Compaction summaries are lossy, while deja's references are exact.
 
 **How accurate are the audit numbers?**
-They're estimates: tokens come from a fast local counter, and dollars from a model of Anthropic's prompt caching (5-minute TTL, 1.25× writes, 0.1× reads, a 20k-token system prompt). The relative comparison between strategies is the robust part. `deja stats` reports what the live proxy actually removed.
+They're estimates. Tokens come from a fast local counter that undercounts (0.71× the provider's figure on a live Claude Code prompt), so dollar amounts are conservative. Costs come from a model of Anthropic's prompt caching: 5-minute TTL, 1.25× writes, 0.1× reads, a 20k-token system prompt. The percentages compare strategies under the same estimator and cache model, which makes them the robust part. `deja stats` reports what the live proxy actually removed, alongside the provider's own cache numbers.
 
 **Does it work with Codex CLI?**
 Codex talks to the OpenAI Responses API, which deja supports. Point Codex's provider base URL at `http://127.0.0.1:8787/v1` after `deja start --upstream https://api.openai.com`, or try `deja run --openai -- codex`.
