@@ -7,13 +7,13 @@ npx dejactx audit      # what did stale context cost you? (reads local history, 
 npx dejactx claude     # run Claude Code through deja
 ```
 
-On 44 real Claude Code sessions (2,667 API requests), replayed request by request with exact prompt-cache billing:
+On 48 real Claude Code sessions (2,740 API requests), replayed request by request with exact prompt-cache billing:
 
 | strategy | input bill | average prompt |
 |---|---|---|
-| as it happened | $197 | 86.7k tokens |
-| eager pruning (what context pruners do) | −19.1% | 50.4k |
-| **deja** | **−31.5%** | **54.9k** |
+| as it happened | $202 | 87.6k tokens |
+| eager pruning (what context pruners do) | −14.1% | |
+| **deja** | **−31.0%** | **55.9k** |
 
 Run `npx dejactx audit` to get this table for your own history.
 
@@ -25,13 +25,13 @@ Every API request an agent makes resends the **entire** conversation. A 400-line
 
 Prompt caching makes those resends cheaper (0.1× price), but not free. They also fill the context window, which triggers lossy auto-compaction sooner.
 
-The obvious fix is to prune old tool output. **It backfires.** The prompt cache matches on an exact prefix, so editing an old message invalidates everything after it, and the whole tail is re-billed at 1.25×. Prune eagerly and you keep paying for cache rewrites. In the replay, eager pruning that waits 20 requests before pruning cost **26% more than doing nothing at all**:
+The obvious fix is to prune old tool output. **It backfires.** The prompt cache matches on an exact prefix, so editing an old message invalidates everything after it, and the whole tail is re-billed at 1.25×. Prune eagerly and you keep paying for cache rewrites. In the replay, eager pruning that waits 20 requests before pruning cost **28% more than doing nothing at all**:
 
 | output counts as stale after | eager pruning | deja |
 |---|---|---|
-| 5 requests | −19.1% | **−31.5%** |
-| 10 requests | ±0.0% | **−27.5%** |
-| 20 requests | **+26.3%** | **−22.4%** |
+| 5 requests | −14.1% | **−31.0%** |
+| 10 requests | +4.2% | **−26.9%** |
+| 20 requests | **+28.4%** | **−21.7%** |
 
 (Reproduce with `npx dejactx audit --min-age 20`.)
 
