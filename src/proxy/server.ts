@@ -84,10 +84,19 @@ export function isCompressiblePath(path: string): boolean {
 /** OpenAI-style caches have no write premium: a rewrite costs 1x, not 1.25x. */
 export const OPENAI_CACHE = { writeMultiplier: 1, readMultiplier: 0.1 };
 
+/** Request header that turns deja off for one request: `x-deja: off`. */
+export const BYPASS_HEADER = "x-deja";
+
+export function isBypassed(headers: IncomingHttpHeaders): boolean {
+  const v = headers[BYPASS_HEADER];
+  const s = Array.isArray(v) ? v[0] : v;
+  return s !== undefined && /^(off|0|false|bypass)$/i.test(s.trim());
+}
+
 export function forwardHeaders(headers: IncomingHttpHeaders, bodyLength: number | null): Record<string, string | string[]> {
   const out: Record<string, string | string[]> = {};
   for (const [k, v] of Object.entries(headers)) {
-    if (v === undefined || HOP_BY_HOP.has(k)) continue;
+    if (v === undefined || HOP_BY_HOP.has(k) || k === BYPASS_HEADER) continue;
     if (k === "content-length") continue;
     out[k] = v;
   }
@@ -116,7 +125,7 @@ export function rewriteBody(
   opts: ProxyOptions,
 ): { body: Buffer; event?: ProxyEvent } {
   const kind = apiKind(path);
-  if (opts.enabled === false || !kind || body.length === 0) return { body };
+  if (opts.enabled === false || !kind || body.length === 0 || isBypassed(headers)) return { body };
   if (headers["content-encoding"]) return { body };
   let raw: unknown;
   try {

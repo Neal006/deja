@@ -151,6 +151,23 @@ describe("rewriteBody", () => {
   });
 });
 
+describe("bypass header", () => {
+  it("skips rewriting when x-deja is off", () => {
+    const raw = Buffer.from(JSON.stringify(repeatedReads()));
+    expect(rewriteBody("/v1/messages", { "x-deja": "off" }, raw, {}).body).toBe(raw);
+    expect(rewriteBody("/v1/messages", { "x-deja": "0" }, raw, {}).body).toBe(raw);
+  });
+
+  it("rewrites for any other value", () => {
+    const raw = Buffer.from(JSON.stringify(repeatedReads()));
+    expect(rewriteBody("/v1/messages", { "x-deja": "on" }, raw, {}).body).not.toBe(raw);
+  });
+
+  it("is never forwarded upstream", () => {
+    expect(forwardHeaders({ "x-deja": "off", "x-api-key": "k" }, null)).toEqual({ "x-api-key": "k" });
+  });
+});
+
 describe("estimatePrompt", () => {
   it("counts system, tools and messages", () => {
     const body = new Conversation("x".repeat(400)).user("y".repeat(400)).build();
