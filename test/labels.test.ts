@@ -13,6 +13,9 @@ describe("toolLabel", () => {
     expect(label.length).toBeLessThan(80);
     expect(label).toContain("…");
   });
+  it("labels argv-style commands", () => {
+    expect(toolLabel("shell", { command: ["bash", "-lc", "npm test"], workdir: "/repo" })).toBe("shell `bash -lc npm test`");
+  });
   it("labels searches by pattern", () => {
     expect(toolLabel("Grep", { pattern: "TODO", path: undefined })).toBe('Grep "TODO"');
   });

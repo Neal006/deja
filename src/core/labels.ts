@@ -32,7 +32,9 @@ const PATTERN_KEYS = ["pattern", "query", "regex"];
 export function toolLabel(name: string, input: Record<string, unknown> | undefined, cwd?: string): string {
   const args = input ?? {};
   for (const k of COMMAND_KEYS) {
-    const v = str(args[k]);
+    const raw = args[k];
+    // Some agents (Codex) pass the command as an argv array.
+    const v = Array.isArray(raw) && raw.every((x) => typeof x === "string") ? raw.join(" ") : str(raw);
     if (v) return `${name} \`${clip(v)}\``;
   }
   for (const k of PATH_KEYS) {
