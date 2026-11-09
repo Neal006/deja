@@ -31,6 +31,18 @@ describe("eviction", () => {
     expect(blocks[0]!.cache_control).toEqual({ type: "ephemeral" });
   });
 
+  it("counts calls that re-target stubbed content in the newest turn", () => {
+    const conv = new Conversation()
+      .tool("Bash", { command: "npm test" }, testLog)
+      .tool("Bash", { command: "ls" }, "a")
+      .tool("Bash", { command: "npm test" }, testLog);
+    const r = transformRequest(conv.build(), { evict: new Set(["toolu_0001"]) });
+    expect(r.stats.rerunsOfStubbed).toBe(1);
+    // A call to something else is not a re-run.
+    const other = new Conversation().tool("Bash", { command: "npm test" }, testLog).tool("Bash", { command: "ls" }, "a");
+    expect(transformRequest(other.build(), { evict: new Set(["toolu_0001"]) }).stats.rerunsOfStubbed).toBe(0);
+  });
+
   it("leaves results not in the set alone", () => {
     const body = new Conversation().tool("Bash", { command: "npm test" }, testLog).build();
     expect(transformRequest(body, { evict: new Set(["toolu_9999"]) }).changed).toBe(false);

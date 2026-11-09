@@ -22,6 +22,12 @@ export interface TransformStats {
   evictedResults: number;
   /** Write/edit inputs whose bodies were replaced by decay stubs. */
   evictedInputs: number;
+  /**
+   * Tool calls in the newest assistant turn that target the same thing
+   * (file, command) as a result that had been stubbed: an upper bound on
+   * how often decay made the model fetch something again.
+   */
+  rerunsOfStubbed: number;
 }
 
 export interface TransformResult {
@@ -82,7 +88,10 @@ export class TransformEngine {
     freshSaved: 0,
     evictedResults: 0,
     evictedInputs: 0,
+    rerunsOfStubbed: 0,
   };
+  /** Targets (labels without ordinals) of results replaced by stubs. */
+  private readonly stubbedTargets = new Set<string>();
   readonly savedByMessage: number[] = [];
   readonly toolTokensByMessage: number[] = [];
   /** Rewritten messages so far, aligned with the pushed messages. */
@@ -151,7 +160,7 @@ export class TransformEngine {
       const before = stats.tokensBefore;
       const after = stats.tokensAfter;
       const next = this.evict.has(result.tool_use_id)
-        ? evictResult(result, label, name, stats)
+        ? this.stub(result, label, name, target)
         : rewriteResult(result, label, this.dict, this.opts, compressible, stats);
       this.options.onResult?.({
         tool: name,
@@ -168,8 +177,32 @@ export class TransformEngine {
     return msgChanged ? { ...msg, content } : msg;
   }
 
+  private stub(result: ToolResultBlock, label: string, tool: string, target: string): ToolResultBlock {
+    const next = evictResult(result, label, tool, this.stats);
+    if (next !== result) this.stubbedTargets.add(target);
+    return next;
+  }
+
+  /** Count calls in the newest assistant turn that re-target stubbed content. */
+  private countReruns(): number {
+    for (let i = this.output.length - 1; i >= 0; i--) {
+      const msg = this.output[i]!;
+      if (msg.role !== "assistant") continue;
+      if (typeof msg.content === "string") return 0;
+      let n = 0;
+      for (const b of msg.content) {
+        if (b.type !== "tool_use") continue;
+        const use = b as ToolUseBlock;
+        if (this.stubbedTargets.has(toolLabel(use.name, use.input, this.cwd))) n++;
+      }
+      return n;
+    }
+    return 0;
+  }
+
   /** A TransformResult for `body`, whose messages must all have been pushed. */
   result(body: MessagesRequest): TransformResult {
+    this.stats.rerunsOfStubbed = this.countReruns();
     return {
       body: this.changed ? { ...body, messages: [...this.output] } : body,
       changed: this.changed,
