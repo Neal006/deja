@@ -24,7 +24,7 @@ That's how a stub is meant to be used: the content left the context after sittin
 ## I want to compare with and without deja
 
 ```bash
-deja claude --off        # same proxy and ledger, but nothing is rewritten
+deja --off claude        # same proxy and ledger, but nothing is rewritten
 deja claude              # deja on
 deja stats               # the "measured by the provider" block shows real cache reads/writes
 ```
