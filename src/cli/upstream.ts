@@ -25,3 +25,18 @@ function isLocalDeja(url: string, env: NodeJS.ProcessEnv): boolean {
     return false;
   }
 }
+
+export const OPENAI_UPSTREAM = "https://api.openai.com";
+
+/**
+ * Upstream for OpenAI-compatible agents: flag, DEJA_UPSTREAM, an existing
+ * OPENAI_BASE_URL / OPENAI_API_BASE (minus a trailing /v1, since clients add
+ * the path themselves), then api.openai.com.
+ */
+export function resolveOpenAIUpstream(flag: string | undefined, env: NodeJS.ProcessEnv = process.env): string {
+  if (flag) return flag;
+  if (env.DEJA_UPSTREAM) return env.DEJA_UPSTREAM;
+  const base = env.OPENAI_BASE_URL || env.OPENAI_API_BASE;
+  if (base && env.DEJA_ACTIVE !== "1") return base.replace(/\/v1\/?$/, "");
+  return OPENAI_UPSTREAM;
+}
