@@ -49,3 +49,25 @@ describe("formatTokens", () => {
     expect(formatTokens(2_500_000)).toBe("2.50M");
   });
 });
+
+describe("estimateTokens fast path", () => {
+  // Reference implementation: the original regex-based estimator.
+  const PUNCT = /[{}()[\];,.<>:=+\-*/%!&|^~?@#$"'`\\]/g;
+  function reference(text: string): number {
+    if (!text) return 0;
+    const punct = text.match(PUNCT)?.length ?? 0;
+    const newlines = countChar(text, "\n");
+    const base = (text.length - punct - newlines) / 4;
+    return Math.max(1, Math.round(base + punct * 0.7 + newlines * 0.5));
+  }
+
+  it.each([
+    "plain words only",
+    "if (a) { b[c] = d; } // done\n",
+    "`template ${x}` \\ back\\slash 'q' \"dq\" @#$%^&*~?|!",
+    "unicode → déjà vu ✓ ⟨ref⟩\n\n\t",
+    "x".repeat(1000),
+  ])("matches the regex estimator for %j", (text) => {
+    expect(estimateTokens(text)).toBe(reference(text));
+  });
+});

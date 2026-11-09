@@ -8,13 +8,20 @@
  * tokenize poorly compared to plain words.
  */
 
-const PUNCT = /[{}()[\];,.<>:=+\-*/%!&|^~?@#$"'`\\]/g;
+const PUNCT_CHARS = `{}()[];,.<>:=+-*/%!&|^~?@#$"'\`\\`;
+const IS_PUNCT = new Uint8Array(128);
+for (const ch of PUNCT_CHARS) IS_PUNCT[ch.charCodeAt(0)] = 1;
 
 export function estimateTokens(text: string): number {
   if (!text) return 0;
   const chars = text.length;
-  const punct = text.match(PUNCT)?.length ?? 0;
-  const newlines = countChar(text, "\n");
+  let punct = 0;
+  let newlines = 0;
+  for (let i = 0; i < chars; i++) {
+    const c = text.charCodeAt(i);
+    if (c === 10) newlines++;
+    else if (c < 128 && IS_PUNCT[c] === 1) punct++;
+  }
   // Base: 4 chars per token. Punctuation tends to be its own token, and
   // newlines are usually merged with indentation into a single token.
   const base = (chars - punct - newlines) / 4;
