@@ -2,8 +2,9 @@ import { createServer, request as httpRequest, type IncomingHttpHeaders, type In
 import { request as httpsRequest } from "node:https";
 import { transformRequest, type TransformOptions, type TransformStats } from "../anthropic/transform.js";
 import { isMessagesRequest, type MessagesRequest } from "../anthropic/types.js";
-import { fromAnthropic, toAnthropic, type Mapped } from "../openai/adapter.js";
-import { isChatRequest, type ChatRequest } from "../openai/types.js";
+import { fromAnthropic, toAnthropic } from "../openai/adapter.js";
+import { isResponsesRequest, responsesFromAnthropic, responsesToAnthropic } from "../openai/responses.js";
+import { isChatRequest } from "../openai/types.js";
 import { takeInventory } from "../decay/inventory.js";
 import { decide, DEFAULT_DECAY, type DecayConfig, type DecayReason } from "../decay/policy.js";
 import type { StateStore } from "../decay/store.js";
@@ -57,13 +58,14 @@ const HOP_BY_HOP = new Set([
   "host",
 ]);
 
-export type ApiKind = "anthropic" | "openai";
+export type ApiKind = "anthropic" | "openai" | "responses";
 
 /** Which API a path belongs to, if its body carries a conversation. */
 export function apiKind(path: string): ApiKind | undefined {
   const p = path.split("?")[0] ?? "";
   if (/\/v1\/messages(\/count_tokens)?$/.test(p)) return "anthropic";
   if (/\/chat\/completions$/.test(p)) return "openai";
+  if (/\/v1\/responses$/.test(p)) return "responses";
   return undefined;
 }
 
@@ -116,17 +118,26 @@ export function rewriteBody(
     return { body };
   }
   const started = performance.now();
-  let chat: ChatRequest | undefined;
-  let mapped: Mapped | undefined;
+  // Map every supported API onto the engine's Anthropic shape, and keep a
+  // way back to the original format for the rewritten result.
   let parsed: MessagesRequest;
+  let back: (out: MessagesRequest, changed: boolean) => unknown;
   if (kind === "openai") {
     if (!isChatRequest(raw)) return { body };
-    chat = raw;
-    mapped = toAnthropic(chat);
+    const chat = raw;
+    const mapped = toAnthropic(chat);
     parsed = mapped.body;
+    back = (out, changed) => (changed ? fromAnthropic(chat, mapped, out) : chat);
+  } else if (kind === "responses") {
+    if (!isResponsesRequest(raw)) return { body };
+    const req = raw;
+    const mapped = responsesToAnthropic(req);
+    parsed = mapped.body;
+    back = (out, changed) => (changed ? responsesFromAnthropic(req, mapped, out) : req);
   } else {
     if (!isMessagesRequest(raw)) return { body };
     parsed = raw;
+    back = (out) => out;
   }
   let evict: Set<string> | undefined;
   let decayInfo: ProxyEvent["decay"];
@@ -140,7 +151,7 @@ export function rewriteBody(
       } else {
         const state = opts.decay.store.get(key);
         const base = opts.decay.config ?? DEFAULT_DECAY;
-        const cfg = kind === "openai" ? { ...base, ...OPENAI_CACHE } : base;
+        const cfg = kind === "anthropic" ? base : { ...base, ...OPENAI_CACHE };
         const d = decide(parsed, state, (opts.decay.now ?? Date.now)(), cfg);
         evict = d.evict;
         decayInfo = { reason: d.reason, newlyEvicted: d.newlyEvicted.length, evicted: d.evict.size };
@@ -153,7 +164,7 @@ export function rewriteBody(
     }
   }
   const result = transformRequest(parsed, { ...opts.transform, evict });
-  const out: unknown = chat && mapped ? (result.changed ? fromAnthropic(chat, mapped, result.body) : chat) : result.body;
+  const out = back(result.body, result.changed);
   const event: ProxyEvent = {
     path,
     model: parsed.model,

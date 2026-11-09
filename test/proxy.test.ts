@@ -54,6 +54,7 @@ describe("apiKind", () => {
     ["/v1/messages", "anthropic"],
     ["/v1/chat/completions", "openai"],
     ["/api/v1/chat/completions?x=1", "openai"],
+    ["/v1/responses", "responses"],
     ["/v1/embeddings", undefined],
   ])("%s -> %s", (p, k) => expect(apiKind(p)).toBe(k));
 });
@@ -83,6 +84,22 @@ describe("rewriteBody for OpenAI", () => {
   it("leaves Anthropic-shaped bodies on the chat path alone", () => {
     const raw = Buffer.from(JSON.stringify({ messages: [{ role: "user", content: "hi" }] }));
     expect(rewriteBody("/v1/chat/completions", {}, raw, {}).body).toBe(raw);
+  });
+});
+
+describe("rewriteBody for the Responses API", () => {
+  it("dedups function call outputs", () => {
+    const file = numbered(code(60));
+    const input = [
+      { type: "function_call", call_id: "c1", name: "read_file", arguments: '{"path":"a.ts"}' },
+      { type: "function_call_output", call_id: "c1", output: file },
+      { type: "function_call", call_id: "c2", name: "read_file", arguments: '{"path":"a.ts"}' },
+      { type: "function_call_output", call_id: "c2", output: file },
+    ];
+    const r = rewriteBody("/v1/responses", {}, Buffer.from(JSON.stringify({ model: "gpt-5", input })), {});
+    const out = JSON.parse(r.body.toString()) as { input: Array<{ output?: string }> };
+    expect(out.input).toHaveLength(4);
+    expect(out.input[3]!.output).toContain("same as all of read_file a.ts");
   });
 });
 
