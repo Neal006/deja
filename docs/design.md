@@ -78,6 +78,10 @@ Not knowing how many more requests the session will make, the deterministic rule
 - **Stickiness.** Evicted ids are remembered (and persisted under `~/.deja`), so every later request stubs the same items in the same way and the new prefix is cache-stable.
 - **Cacheless providers** (`--uncached`): no cache means no rewrite cost, so *B* = 0 always.
 
+### Checked, not just claimed
+
+`test/competitive.test.ts` runs the real policy, the real rewriter and the billing model on 40 randomized sessions. In half of them the stale output is small next to later output, which makes eviction expensive. Each run is compared against the best eviction schedule chosen *in hindsight*. Across the seeds the worst ratio is **1.17×** (the theory allows 2×), and the test fails if any session exceeds 2×.
+
 ### Interaction with dedup
 
 Decay runs first. Evicted content is never indexed, so dedup can't point a reference at it. A later result that used to be a reference to now-evicted text is simply shown in full, and because it sits after *p* it's being rewritten anyway.
