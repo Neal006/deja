@@ -162,6 +162,13 @@ function evictResult(result: ToolResultBlock, label: string, tool: string, stats
   stats.tokensBefore += before;
   stats.tokensAfter += after;
   stats.evictedResults++;
+  if (Array.isArray(result.content)) {
+    // Keep the array form, and any cache breakpoint the client put on a
+    // block, so eviction never silently moves the client's cache markers.
+    const marker = [...result.content].reverse().find((b) => "cache_control" in b) as { cache_control?: unknown } | undefined;
+    const block: TextBlock = { type: "text", text: stub, ...(marker ? { cache_control: marker.cache_control } : {}) };
+    return { ...result, content: [block] };
+  }
   return { ...result, content: stub };
 }
 

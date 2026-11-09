@@ -19,6 +19,18 @@ describe("eviction", () => {
     expect(r.stats.tokensAfter).toBeLessThan(r.stats.tokensBefore / 5);
   });
 
+  it("keeps array form and cache markers when evicting block content", () => {
+    const body = new Conversation()
+      .tool("Bash", { command: "npm test" }, [{ type: "text", text: testLog, cache_control: { type: "ephemeral" } }])
+      .build();
+    const r = transformRequest(body, { evict: new Set(["toolu_0001"]) });
+    const blocks = (r.body.messages[1]!.content as Array<{ content: Array<Record<string, unknown>> }>)[0]!.content;
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]!.type).toBe("text");
+    expect(String(blocks[0]!.text)).toMatch(/^⟪deja: stale/);
+    expect(blocks[0]!.cache_control).toEqual({ type: "ephemeral" });
+  });
+
   it("leaves results not in the set alone", () => {
     const body = new Conversation().tool("Bash", { command: "npm test" }, testLog).build();
     expect(transformRequest(body, { evict: new Set(["toolu_9999"]) }).changed).toBe(false);
