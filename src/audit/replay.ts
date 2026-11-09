@@ -97,7 +97,7 @@ const NO_COMPRESS = {
 export type StrategyBills = Record<Strategy, Bill>;
 
 export function emptyBill(): Bill {
-  return { cost: 0, cachedTokens: 0, writtenTokens: 0, promptTokens: 0, requests: 0 };
+  return { cost: 0, cachedTokens: 0, writtenTokens: 0, promptTokens: 0, requests: 0, lastPrompt: 0 };
 }
 
 export function addBill(a: Bill, b: Bill): Bill {
@@ -107,6 +107,7 @@ export function addBill(a: Bill, b: Bill): Bill {
     writtenTokens: a.writtenTokens + b.writtenTokens,
     promptTokens: a.promptTokens + b.promptTokens,
     requests: a.requests + b.requests,
+    lastPrompt: b.lastPrompt,
   };
 }
 

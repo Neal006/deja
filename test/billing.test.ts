@@ -41,6 +41,7 @@ describe("CacheBiller", () => {
     expect(b.bill.requests).toBe(2);
     expect(b.bill.promptTokens).toBe(110 + 120);
     expect(b.bill.cachedTokens).toBe(110);
+    expect(b.bill.lastPrompt).toBe(120);
   });
 });
 

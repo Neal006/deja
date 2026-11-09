@@ -41,12 +41,14 @@ export interface Bill {
   writtenTokens: number;
   promptTokens: number;
   requests: number;
+  /** Prompt tokens of the most recent request: the context size at the end. */
+  lastPrompt: number;
 }
 
 export class CacheBiller {
   private prevHashes: string[] = [];
   private lastTime: number | undefined;
-  readonly bill: Bill = { cost: 0, cachedTokens: 0, writtenTokens: 0, promptTokens: 0, requests: 0 };
+  readonly bill: Bill = { cost: 0, cachedTokens: 0, writtenTokens: 0, promptTokens: 0, requests: 0, lastPrompt: 0 };
 
   constructor(private readonly cfg: BillingConfig = DEFAULT_BILLING) {}
 
@@ -77,6 +79,7 @@ export class CacheBiller {
     this.bill.cachedTokens += cached;
     this.bill.writtenTokens += written;
     this.bill.promptTokens += cached + written;
+    this.bill.lastPrompt = cached + written;
     this.bill.requests++;
     this.prevHashes = hashes;
     return cost;

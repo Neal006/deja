@@ -51,8 +51,8 @@ describe("replaySegment", () => {
 
 describe("bill helpers", () => {
   it("adds bills", () => {
-    const a = { cost: 1, cachedTokens: 2, writtenTokens: 3, promptTokens: 5, requests: 1 };
-    expect(addBill(a, a)).toEqual({ cost: 2, cachedTokens: 4, writtenTokens: 6, promptTokens: 10, requests: 2 });
+    const a = { cost: 1, cachedTokens: 2, writtenTokens: 3, promptTokens: 5, requests: 1, lastPrompt: 5 };
+    expect(addBill(a, { ...a, lastPrompt: 9 })).toEqual({ cost: 2, cachedTokens: 4, writtenTokens: 6, promptTokens: 10, requests: 2, lastPrompt: 9 });
     expect(addBill(emptyBill(), a)).toEqual(a);
   });
 });
