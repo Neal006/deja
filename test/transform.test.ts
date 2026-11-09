@@ -46,6 +46,20 @@ describe("transformRequest", () => {
     expect(third).toContain("⟨same as Read a.ts lines 31-60⟩");
   });
 
+  it("points at the later read for a block that only exists there", () => {
+    const base = code(60);
+    const block = code(10, "inserted");
+    const edited = numbered([...base.slice(0, 30), ...block, ...base.slice(30)]);
+    const body = new Conversation()
+      .tool("Read", { file_path: "/repo/a.ts" }, numbered(base))
+      .tool("Read", { file_path: "/repo/a.ts" }, edited)
+      .tool("Read", { file_path: "/repo/a.ts" }, edited)
+      .build();
+    const third = resultText(transformRequest(body).body, 5);
+    expect(third).toContain("⟨same as Read a.ts (2nd time) lines 31-40⟩");
+    expect(third).toContain("⟨same as Read a.ts lines 31-60⟩");
+  });
+
   it("never mutates the input request", () => {
     const file = numbered(code(60));
     const body = new Conversation().tool("Read", { file_path: "/repo/a.ts" }, file).tool("Read", { file_path: "/repo/a.ts" }, file).build();
