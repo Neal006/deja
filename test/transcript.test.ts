@@ -83,6 +83,21 @@ describe("parseTranscript", () => {
     expect(parseTranscript(text).segments[0]!.messages).toHaveLength(2);
   });
 
+  it("reads a subagent transcript made only of sidechain lines", () => {
+    const text = [
+      L({ type: "user", isSidechain: true, message: { role: "user", content: "investigate" } }),
+      L({ type: "assistant", isSidechain: true, message: { id: "a", role: "assistant", content: [{ type: "text", text: "done" }] } }),
+    ].join("\n");
+    const t = parseTranscript(text);
+    expect(t.segments).toHaveLength(1);
+    expect(t.segments[0]!.messages.map((m) => m.role)).toEqual(["user", "assistant"]);
+  });
+
+  it("still skips sidechain lines inside a main session", () => {
+    const t = parseTranscript(sample());
+    expect(JSON.stringify(t.segments)).not.toContain("side");
+  });
+
   it("handles empty input", () => {
     expect(parseTranscript("").segments).toEqual([]);
   });

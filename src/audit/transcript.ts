@@ -48,7 +48,19 @@ function blocks(content: unknown): ContentBlock[] {
   return [];
 }
 
+/**
+ * Parse a transcript. Sidechain lines (a subagent's turns embedded in the
+ * main session) are skipped, except when the whole file is a sidechain:
+ * Claude Code writes each subagent's conversation to its own file, where
+ * every line is marked as sidechain.
+ */
 export function parseTranscript(text: string, path = "<memory>"): Transcript {
+  const main = parseLines(text, path, false);
+  if (main.segments.length > 0 || !/"isSidechain"\s*:\s*true/.test(text)) return main;
+  return parseLines(text, path, true);
+}
+
+function parseLines(text: string, path: string, includeSidechain: boolean): Transcript {
   const t: Transcript = { path, segments: [] };
   let messages: Message[] = [];
   let times: Array<number | undefined> = [];
@@ -87,7 +99,7 @@ export function parseTranscript(text: string, path = "<memory>"): Transcript {
       continue;
     }
     if (line.type !== "user" && line.type !== "assistant") continue;
-    if (line.isSidechain) continue;
+    if (line.isSidechain && !includeSidechain) continue;
     const msg = line.message;
     if (!msg) continue;
     if (line.type === "assistant" && typeof msg.model === "string" && !msg.model.startsWith("<")) {
