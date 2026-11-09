@@ -88,6 +88,12 @@ export function renderReport(report: StatsReport, color: boolean): string {
         `${p.dim(`(${percent(t.saved, t.tokensBefore)} of tool output, ${t.requests} requests)`)}  ${p.yellow(`≈ ${usd(t.usd)}`)}`,
     );
   }
+  if (all.stubs > 0) {
+    lines.push(
+      `${"stubs".padEnd(12)} ${all.stubs} stale outputs stubbed · ${all.reruns} later re-run ` +
+        p.dim(`(${percent(all.reruns, all.stubs)}, an upper bound on how often the model needed them back)`),
+    );
+  }
   if (report.daily.some((d) => d > 0)) {
     lines.push(`${"last 14 days".padEnd(12)} ${p.green(sparkline(report.daily))}`);
   }

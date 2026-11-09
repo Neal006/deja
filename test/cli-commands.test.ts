@@ -25,6 +25,14 @@ describe("buildReport", () => {
   });
 });
 
+describe("stub reporting", () => {
+  it("shows stubs and re-runs", () => {
+    const out = renderReport(buildReport([{ ...entry(NOW - 1000, 5000), st: 10, rr: 1 }], NOW, undefined, "/l"), false);
+    expect(out).toContain("10 stale outputs stubbed · 1 later re-run");
+    expect(out).toContain("10.0%");
+  });
+});
+
 describe("dailySaved", () => {
   it("buckets savings by day ending today", () => {
     const d = dailySaved([entry(NOW - 1000, 10), entry(NOW - DAY, 5), entry(NOW - 30 * DAY, 99)], NOW, 3);
@@ -64,7 +72,7 @@ describe("renderReport with measured usage", () => {
 
 describe("eventLine", () => {
   const base = { path: "/v1/messages", model: "m", ms: 1.23 };
-  const z = { evictedResults: 0, evictedInputs: 0 };
+  const z = { evictedResults: 0, evictedInputs: 0, rerunsOfStubbed: 0 };
   it("is quiet when nothing was saved", () => {
     expect(eventLine({ ...base, stats: { ...z, toolResults: 3, compressed: 0, tokensBefore: 10, tokensAfter: 10, freshSaved: 0 } }, false)).toContain(
       "nothing to trim",
