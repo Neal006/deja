@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildReport, dailySaved, renderReport } from "../src/cli/commands/stats.js";
+import { buildReport, byModel, dailySaved, renderModels, renderReport } from "../src/cli/commands/stats.js";
 import { eventLine, skipToolsFromArgs } from "../src/cli/commands/start.js";
 import { parseArgs } from "../src/cli/args.js";
 import { summaryLine } from "../src/cli/commands/wrap.js";
@@ -103,5 +103,35 @@ describe("skipToolsFromArgs", () => {
   });
   it("defaults to nothing", () => {
     expect(skipToolsFromArgs(parseArgs([]), {})).toEqual([]);
+  });
+});
+
+describe("byModel", () => {
+  it("groups and sorts by savings", () => {
+    const rows = byModel([
+      { ...entry(NOW, 100), model: "claude-haiku-4-5" },
+      { ...entry(NOW, 900), model: "claude-opus-4-5" },
+      { ...entry(NOW, 50), model: "claude-opus-4-5" },
+      entry(NOW, 10),
+    ]);
+    expect(rows.map((r) => [r.model, r.totals.saved])).toEqual([
+      ["claude-opus-4-5", 950],
+      ["claude-haiku-4-5", 100],
+      ["unknown", 10],
+    ]);
+  });
+
+  it("respects since", () => {
+    expect(byModel([{ ...entry(5, 1), model: "a" }], 10)).toEqual([]);
+  });
+
+  it("renders rows", () => {
+    const out = renderModels(byModel([{ ...entry(NOW, 2000), model: "claude-opus-4-5" }]), false);
+    expect(out).toContain("claude-opus-4-5");
+    expect(out).toContain("2.00k tokens");
+  });
+
+  it("renders an empty table", () => {
+    expect(renderModels([], false)).toContain("No requests");
   });
 });

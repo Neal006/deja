@@ -37,6 +37,40 @@ export function buildReport(entries: LedgerEntry[], now: number, since?: number,
   };
 }
 
+export interface ModelRow {
+  model: string;
+  totals: Totals;
+}
+
+/** Totals per model, biggest savings first. */
+export function byModel(entries: LedgerEntry[], since = 0): ModelRow[] {
+  const groups = new Map<string, LedgerEntry[]>();
+  for (const e of entries) {
+    const k = e.model ?? "unknown";
+    const list = groups.get(k);
+    if (list) list.push(e);
+    else groups.set(k, [e]);
+  }
+  return [...groups.entries()]
+    .map(([model, list]) => ({ model, totals: totals(list, since) }))
+    .filter((r) => r.totals.requests > 0)
+    .sort((a, b) => b.totals.saved - a.totals.saved);
+}
+
+export function renderModels(rows: ModelRow[], color: boolean): string {
+  const p = paint(color);
+  if (rows.length === 0) return p.dim("No requests recorded yet.");
+  const out = [p.bold("by model")];
+  for (const r of rows) {
+    const t = r.totals;
+    out.push(
+      `  ${r.model.padEnd(28).slice(0, 28)} ${String(t.requests).padStart(6)} req  ${p.bold(formatTokens(t.saved).padStart(7))} tokens ` +
+        `${p.dim(percent(t.saved, t.tokensBefore).padStart(6))}  ${p.yellow(`≈ ${usd(t.usd)}`)}`,
+    );
+  }
+  return out.join("\n");
+}
+
 export function renderReport(report: StatsReport, color: boolean): string {
   const p = paint(color);
   const lines: string[] = [p.magenta(p.bold("deja")) + p.dim("  — context your agent did not pay for twice"), ""];
@@ -85,7 +119,14 @@ export function statsCommand(args: ParsedArgs): number {
     return 2;
   }
   const path = ledgerPath();
-  const report = buildReport(readEntries(path), Date.now(), since, path);
+  const entries = readEntries(path);
+  const report = buildReport(entries, Date.now(), since, path);
+  if (args.flags["by-model"] === true) {
+    const rows = byModel(entries, since !== undefined ? Date.now() - since : 0);
+    if (args.flags.json === true) process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`);
+    else process.stdout.write(`${renderModels(rows, useColor(process.stdout) && args.flags.color !== false)}\n`);
+    return 0;
+  }
   if (args.flags.json === true) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
