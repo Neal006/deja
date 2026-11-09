@@ -11,7 +11,7 @@ import { eventRecord, recorder } from "../../proxy/record.js";
 import { createProxy, type ProxyEvent } from "../../proxy/server.js";
 import { flagNumber, flagString, type ParsedArgs } from "../args.js";
 import { paint, useColor } from "../format.js";
-import { summaryLine } from "./wrap.js";
+import { summaryLine } from "../summary.js";
 import { resolveUpstream } from "../upstream.js";
 
 export const DEFAULT_PORT = 8787;

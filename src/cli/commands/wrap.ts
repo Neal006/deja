@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
-import { formatTokens } from "../../core/tokens.js";
 import { flagString, type ParsedArgs } from "../args.js";
-import { paint, usd, useColor } from "../format.js";
+import { useColor } from "../format.js";
+import { summaryLine } from "../summary.js";
 import { launchArgs } from "../spawn.js";
 import { resolveOpenAIUpstream, resolveUpstream } from "../upstream.js";
 import { decayConfigFromArgs, skipToolsFromArgs, startProxy } from "./start.js";
@@ -62,15 +62,6 @@ export function launchError(cmd: string, err: NodeJS.ErrnoException | Error): st
   return `deja: could not start ${cmd}: ${err.message}`;
 }
 
-export function summaryLine(t: { requests: number; saved: number; usd: number }, color: boolean): string {
-  const p = paint(color);
-  if (t.requests === 0) return p.dim("deja: no API requests went through the proxy");
-  if (t.saved === 0) return p.dim(`deja: ${t.requests} requests, nothing repeated yet`);
-  return (
-    `${p.magenta("deja")} saved ${p.bold(formatTokens(t.saved))} input tokens ` +
-    `across ${t.requests} requests ${p.dim(`(≈ ${usd(t.usd)})`)} · run ${p.cyan("deja stats")} for the full picture`
-  );
-}
 
 export function claudeCommand(args: ParsedArgs, argv: string[]): Promise<number> {
   // Everything after `claude` is forwarded, flags included.

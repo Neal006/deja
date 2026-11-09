@@ -3,7 +3,7 @@ import { buildReport, byModel, dailySaved, renderModels, renderReport } from "..
 import { eventLine, listenError, skipToolsFromArgs, startProxy } from "../src/cli/commands/start.js";
 import { launchError } from "../src/cli/commands/wrap.js";
 import { parseArgs } from "../src/cli/args.js";
-import { summaryLine } from "../src/cli/commands/wrap.js";
+import { summaryLine } from "../src/cli/summary.js";
 import type { LedgerEntry } from "../src/core/ledger.js";
 
 const DAY = 86_400_000;
