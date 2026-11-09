@@ -171,7 +171,7 @@ To send one request untouched, add the header `x-deja: off`. deja strips the hea
 ## Safety
 
 - **Fails open.** If deja can't parse or transform a request, it forwards the original bytes.
-- **No content is stored.** The ledger (`~/.deja/ledger.jsonl`) records token counts only, and decay state records tool-use ids only.
+- **No content is stored.** The ledger (`~/.deja/ledger.jsonl`) records token counts only, and decay state records tool-use ids only. See [docs/data.md](docs/data.md) for every field.
 - **Nothing leaves your machine** except the request your agent was already making.
 - **Errors are never compressed.** A failing tool result is always shown verbatim.
 - **Everything is recoverable.** References point at text still in context. Stubs only replace content the environment can recreate (re-run the command, re-read the file), and they keep the first and last lines.
