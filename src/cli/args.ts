@@ -12,7 +12,7 @@ export interface ParsedArgs {
 }
 
 /** Flags that never take a value, so `--quiet claude` keeps `claude` as the command. */
-export const BOOLEAN_FLAGS = new Set(["json", "quiet", "off", "uncached", "quick", "help", "version", "color", "decay", "openai", "offline", "share", "by-project"]);
+export const BOOLEAN_FLAGS = new Set(["json", "quiet", "off", "uncached", "quick", "help", "version", "color", "decay", "openai", "offline", "share", "by-project", "force"]);
 
 export function parseArgs(argv: string[], booleans: ReadonlySet<string> = BOOLEAN_FLAGS): ParsedArgs {
   const out: ParsedArgs = { command: undefined, positionals: [], flags: {}, rest: [] };

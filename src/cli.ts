@@ -3,6 +3,7 @@ import { parseArgs } from "./cli/args.js";
 import { auditCommand } from "./cli/commands/audit.js";
 import { doctorCommand } from "./cli/commands/doctor.js";
 import { previewCommand } from "./cli/commands/preview.js";
+import { setupCommand } from "./cli/commands/setup.js";
 import { statuslineCommand } from "./cli/commands/statusline.js";
 import { startCommand } from "./cli/commands/start.js";
 import { statsCommand } from "./cli/commands/stats.js";
@@ -38,6 +39,8 @@ async function main(argv: string[]): Promise<number> {
       return doctorCommand(args);
     case "statusline":
       return statuslineCommand();
+    case "setup":
+      return setupCommand(args);
     case undefined:
     case "help":
       process.stdout.write(HELP);

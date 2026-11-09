@@ -19,7 +19,8 @@ Usage
   deja stats [--since 7d] [--json] show what deja has saved
   deja doctor                      check your setup
   deja statusline                  one-line live savings for Claude Code's
-                                   status line (see README)
+                                   status line
+  deja setup statusline [--force]  add that status line to Claude Code
   deja help | --version
 
 Options
