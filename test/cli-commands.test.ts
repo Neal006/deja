@@ -37,6 +37,16 @@ describe("renderReport", () => {
   });
 });
 
+describe("renderReport with measured usage", () => {
+  it("shows provider-reported cache split", () => {
+    const e = { ...entry(NOW - 1000, 5000), in: 100, cr: 800, cw: 100, out: 50 };
+    const out = renderReport(buildReport([e], NOW, undefined, "/l"), false);
+    expect(out).toContain("measured by the provider");
+    expect(out).toContain("cache reads 80.0%");
+    expect(out).toContain("output tokens 50");
+  });
+});
+
 describe("eventLine", () => {
   const base = { path: "/v1/messages", model: "m", ms: 1.23 };
   const z = { evictedResults: 0, evictedInputs: 0 };

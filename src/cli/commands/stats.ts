@@ -39,6 +39,16 @@ export function renderReport(report: StatsReport, color: boolean): string {
         `${p.dim(`(${percent(t.saved, t.tokensBefore)} of tool output, ${t.requests} requests)`)}  ${p.yellow(`≈ ${usd(t.usd)}`)}`,
     );
   }
+  if (all.measured > 0) {
+    const prompt = all.input + all.cacheRead + all.cacheWrite;
+    lines.push("");
+    lines.push(p.bold("measured by the provider") + p.dim(`  (${all.measured} requests)`));
+    lines.push(
+      `  prompt tokens ${p.bold(formatTokens(prompt))}  ` +
+        p.dim(`cache reads ${percent(all.cacheRead, prompt)} · cache writes ${percent(all.cacheWrite, prompt)} · uncached ${percent(all.input, prompt)}`),
+    );
+    lines.push(`  output tokens ${p.bold(formatTokens(all.output))}`);
+  }
   lines.push("");
   lines.push(p.dim(`"tokens" counts input tokens not resent to the model; dollars assume prompt caching.`));
   lines.push(p.dim(`ledger: ${report.ledger}`));
