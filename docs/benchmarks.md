@@ -79,4 +79,17 @@ npm run bench:quality -- --runs 5 --model sonnet --task fix-cart
 | `fix-cart` | find and fix three bugs in one file by running the tests repeatedly | tests pass and `test/` is unchanged |
 | `rename-units` | rename every function in three files to camelCase and update all callers | tests pass, `test/` is unchanged, no snake_case function names left |
 
-It needs Claude Code, git and an API key or login, and it spends real money (runs × tasks × 2 sessions). No results are published here yet. Two small tasks can catch a regression but can't prove there is none, so add tasks that look like your own work: a folder with `repo/`, `task.json` (`prompt`, `allowedTools`, `maxTurns`) and `check.mjs`.
+It needs Claude Code, git and an API key or login, and it spends real money (runs × tasks × 2 sessions).
+
+### Results (Claude Code 2.1.319, default deja settings)
+
+| model | deja | passed | mean cost | mean input tokens | mean turns |
+|---|---|---|---|---|---|
+| Haiku (3 runs × 2 tasks) | off | 6/6 | $0.0130 | 348,943 | 13.0 |
+| Haiku | **on** | **6/6** | $0.0125 | 330,186 | 12.8 |
+| Sonnet (2 runs × 2 tasks) | off | 4/4 | $0.1949 | 299,497 | 11.0 |
+| Sonnet | **on** | **4/4** | $0.1823 | 238,271 | 10.3 |
+
+Every run passed with deja on, and turn counts didn't go up, so stubs and references didn't send the agent back for content it needed. These tasks are short (8–20 turns), so there's little stale context to trim: the savings here (4% on Haiku, 6.5% cost and 20% input tokens on Sonnet) are well below the 30% the replay finds on long real sessions. The samples are small. They can catch a regression, not prove there is none.
+
+Add tasks that look like your own work: a folder with `repo/`, `task.json` (`prompt`, `allowedTools`, `maxTurns`) and `check.mjs`.
