@@ -50,6 +50,9 @@ export interface Bill {
   requests: number;
   /** Prompt tokens of the most recent request: the context size at the end. */
   lastPrompt: number;
+  /** Outputs stubbed by decay, and later calls that re-targeted them. */
+  stubs?: number;
+  reruns?: number;
 }
 
 export class CacheBiller {

@@ -40,6 +40,8 @@ export function replaySegment(seg: Segment, strategy: Strategy, opts: ReplayOpti
   let hashes: string[] = [];
   let tokens: number[] = [];
   let evictKey = "";
+  let stubs = 0;
+  let reruns = 0;
 
   for (let j = 1; j < seg.messages.length; j++) {
     if (seg.messages[j]!.role !== "assistant") continue;
@@ -62,10 +64,14 @@ export function replaySegment(seg: Segment, strategy: Strategy, opts: ReplayOpti
           .map((it) => it.id),
       );
     } else if (strategy === "deja") {
-      evict = decide(body, state, time ?? 0, decay).evict;
+      const d = decide(body, state, time ?? 0, decay);
+      evict = d.evict;
+      stubs += d.newlyEvicted.filter((it) => it.kind === "result").length;
     }
     const opt = strategy === "eager" ? { evict, compress: NO_COMPRESS } : { evict };
-    sent = engine.transform(body, opt).body.messages;
+    const out = engine.transform(body, opt);
+    sent = out.body.messages;
+    reruns += out.stats.rerunsOfStubbed;
     const key = evict ? [...evict].sort().join(",") : "";
     if (key !== evictKey) {
       evictKey = key;
@@ -74,6 +80,10 @@ export function replaySegment(seg: Segment, strategy: Strategy, opts: ReplayOpti
     }
     extend(sent);
     biller.charge(hashes.slice(0, sent.length), tokens.slice(0, sent.length), time);
+  }
+  if (strategy === "deja") {
+    biller.bill.stubs = stubs;
+    biller.bill.reruns = reruns;
   }
   return biller.bill;
 
@@ -109,6 +119,9 @@ export function addBill(a: Bill, b: Bill): Bill {
     promptTokens: a.promptTokens + b.promptTokens,
     requests: a.requests + b.requests,
     lastPrompt: b.lastPrompt,
+    ...(a.stubs !== undefined || b.stubs !== undefined
+      ? { stubs: (a.stubs ?? 0) + (b.stubs ?? 0), reruns: (a.reruns ?? 0) + (b.reruns ?? 0) }
+      : {}),
   };
 }
 

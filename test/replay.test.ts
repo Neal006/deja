@@ -43,6 +43,14 @@ describe("replaySegment", () => {
     expect(r.deja!.cost).toBeLessThanOrEqual(r.eager!.cost);
   });
 
+  it("counts stubs and later re-runs for deja", () => {
+    const seg = session(40);
+    const bill = replaySegment(seg, "deja");
+    expect(bill.stubs).toBeGreaterThan(0);
+    expect(bill.reruns).toBe(0);
+    expect(replaySegment(seg, "baseline").stubs).toBeUndefined();
+  });
+
   it("handles a segment without assistant turns", () => {
     const bill = replaySegment({ messages: [{ role: "user", content: "hi" }], times: [0] }, "deja");
     expect(bill.requests).toBe(0);
