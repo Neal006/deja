@@ -77,3 +77,26 @@ describe("deja audit (end to end)", () => {
     expect(report.bills.deja.cost).toBeLessThan(report.bills.baseline.cost);
   }, 60_000);
 });
+
+describe("deja statusline (end to end)", () => {
+  it("reports the running proxy's savings from inside the wrapped agent", async () => {
+    const home = mkdtempSync(join(tmpdir(), "deja-sl-"));
+    const file = numbered(code(80));
+    const body = JSON.stringify(
+      new Conversation().tool("Read", { file_path: "/repo/a.ts" }, file).tool("Read", { file_path: "/repo/a.ts" }, file).build(),
+    );
+    // The "agent" makes one request, then runs the status line command the
+    // way Claude Code would.
+    const cli = join(ROOT, "dist/cli.js");
+    const agent = `
+      const { execFileSync } = require("node:child_process");
+      fetch(process.env.ANTHROPIC_BASE_URL + "/v1/messages", { method: "POST", body: process.env.BODY })
+        .then((r) => r.text())
+        .then(() => new Promise((r) => setTimeout(r, 100)))
+        .then(() => process.stdout.write(execFileSync("node", [${JSON.stringify(cli)}, "statusline"], { encoding: "utf8" })));`;
+    const { stdout } = await run("node", [cli, "run", "--upstream", upstreamUrl, "--", "node", "-e", agent], {
+      env: { ...process.env, DEJA_HOME: home, BODY: body, NO_COLOR: "1" },
+    });
+    expect(stdout).toMatch(/^deja ↓[\d.]+k? tok · \$/m);
+  }, 30_000);
+});
