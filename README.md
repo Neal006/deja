@@ -94,9 +94,10 @@ Requires Node 20+.
 npx dejactx audit
 npx dejactx audit --since 7d --project my-app
 
-# Run Claude Code through deja (any claude flags work after `claude`)
+# Run Claude Code through deja: deja's flags go before `claude`, Claude Code's after it
 npx dejactx claude
 npx dejactx claude --resume
+npx dejactx --min-age 10 claude --model opus
 
 # Or run the proxy yourself and point any Anthropic-API agent at it
 npx dejactx start            # http://127.0.0.1:8787

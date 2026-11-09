@@ -12,7 +12,8 @@ Usage
                                    repeats cost you? (nothing is sent anywhere)
   deja preview [session] [--request N] [--segment N]
                                    show exactly what deja would have sent
-  deja claude [claude args...]     run Claude Code through deja
+  deja [flags] claude [args...]    run Claude Code through deja (deja's flags
+                                   go before \`claude\`, Claude Code's after)
   deja run -- <cmd> [args...]      run any Anthropic-API agent through deja
   deja run --openai -- <cmd>       run an OpenAI-compatible agent through deja
   deja start [--port 8787]         run the proxy in the foreground
