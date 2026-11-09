@@ -27,6 +27,19 @@ describe("transformRequest", () => {
     expect(resultText(r.body, 3)).toContain("same as all of Read src/a.ts");
     expect(r.stats.compressed).toBe(1);
     expect(r.stats.tokensAfter).toBeLessThan(r.stats.tokensBefore);
+    expect(r.stats.freshSaved).toBe(r.stats.tokensBefore - r.stats.tokensAfter);
+  });
+
+  it("does not count savings in older messages as fresh", () => {
+    const file = numbered(code(60));
+    const body = new Conversation()
+      .tool("Read", { file_path: "/repo/a.ts" }, file)
+      .tool("Read", { file_path: "/repo/a.ts" }, file)
+      .tool("Bash", { command: "ls" }, "a.ts")
+      .build();
+    const r = transformRequest(body);
+    expect(r.stats.tokensBefore - r.stats.tokensAfter).toBeGreaterThan(0);
+    expect(r.stats.freshSaved).toBe(0);
   });
 
   it("keeps single changed lines literal on every re-read", () => {

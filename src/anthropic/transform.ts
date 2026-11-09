@@ -13,6 +13,12 @@ export interface TransformStats {
   compressed: number;
   tokensBefore: number;
   tokensAfter: number;
+  /**
+   * Tokens saved in the final message only. That message is new on this
+   * request, so it would have been billed at full (or cache-write) price;
+   * savings in earlier messages would mostly have been cheap cache reads.
+   */
+  freshSaved: number;
 }
 
 export interface TransformResult {
@@ -48,11 +54,13 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
   const dict = new Dictionary();
   const labels = new LabelRegistry();
   const uses = new Map<string, ToolUseBlock>();
-  const stats: TransformStats = { toolResults: 0, compressed: 0, tokensBefore: 0, tokensAfter: 0 };
+  const stats: TransformStats = { toolResults: 0, compressed: 0, tokensBefore: 0, tokensAfter: 0, freshSaved: 0 };
   let changed = false;
 
-  const messages = body.messages.map((msg): Message => {
+  const last = body.messages.length - 1;
+  const messages = body.messages.map((msg, idx): Message => {
     if (typeof msg.content === "string") return msg;
+    const savedBefore = stats.tokensBefore - stats.tokensAfter;
     let msgChanged = false;
     const content = msg.content.map((block): ContentBlock => {
       if (block.type === "tool_use") {
@@ -72,6 +80,7 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
       if (next !== result) msgChanged = true;
       return next;
     });
+    if (idx === last) stats.freshSaved = stats.tokensBefore - stats.tokensAfter - savedBefore;
     if (!msgChanged) return msg;
     changed = true;
     return { ...msg, content };
