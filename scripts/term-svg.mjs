@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Render ANSI-coloured terminal text (stdin) as an SVG "screenshot".
- * Dev-only; used to produce the README images.
+ * Dev-only; used to produce the README images (`npm run docs:image`).
  *
  *   FORCE_COLOR=1 node dist/cli.js audit | head -10 | node scripts/term-svg.mjs > docs/audit.svg
  */
