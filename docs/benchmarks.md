@@ -24,6 +24,10 @@ Reading the table:
 - **Dedup alone is small** (0.5%) on Claude Code, which already avoids many verbatim re-reads. Its value is that it's free: it never edits old messages, so it never costs a cache rewrite.
 - Eager pruning can shrink the average prompt *more* than deja and still cost more money. Prompt size isn't the bill; cache behaviour is.
 
+## Auto-compaction headroom
+
+Claude Code compacts the conversation when the context fills up, and compaction summaries lose detail. In this dataset it compacted 9 times. At each of those moments the recorded context held **137.0k tokens** on average. Replayed with deja, the same moments would have held **77.2k**: 43.7% less, so compaction would have fired much later or not at all in shorter sessions.
+
 ## Methodology
 
 1. **Parsing.** Each transcript (`~/.claude/projects/**/*.jsonl`) is turned back into API messages: split assistant lines with the same message id are merged, parallel tool results are merged, and each compaction boundary starts a new segment. Subagent transcripts are separate sessions.
