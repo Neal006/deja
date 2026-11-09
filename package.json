@@ -49,5 +49,12 @@
   "homepage": "https://github.com/Neal006/deja#readme",
   "bugs": {
     "url": "https://github.com/Neal006/deja/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   }
 }
