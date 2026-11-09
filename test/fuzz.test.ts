@@ -143,3 +143,28 @@ describe("fuzz: decay keeps determinism and never references evicted text", () =
     });
   }
 });
+
+describe("fuzz: incremental rewriting equals full rewriting", () => {
+  for (let seed = 1; seed <= 25; seed++) {
+    it(`seed ${seed}`, async () => {
+      const { IncrementalTransformer } = await import("../src/anthropic/incremental.js");
+      const r = rng(9000 + seed);
+      const inc = new IncrementalTransformer();
+      const conv = new Conversation();
+      let file = randomFile(r, 30 + Math.floor(r() * 60));
+      const evict = new Set<string>();
+      for (let step = 1; step <= 10; step++) {
+        const roll = r();
+        if (roll < 0.5) conv.tool("Read", { file_path: "/repo/f.ts" }, numbered(file));
+        else if (roll < 0.8) conv.tool("Bash", { command: "npm test" }, randomFile(r, 20).join("\n"));
+        else conv.tool("Write", { file_path: "/repo/f.ts", content: file.join("\n") }, "ok");
+        file = mutate(r, file);
+        // Occasionally evict an earlier call, as the decay policy would.
+        if (r() < 0.25) evict.add(`toolu_${String(1 + Math.floor(r() * step)).padStart(4, "0")}`);
+        const body = conv.build();
+        const opts = { evict: new Set(evict) };
+        expect(JSON.stringify(inc.transform(body, opts).body)).toBe(JSON.stringify(transformRequest(body, opts).body));
+      }
+    });
+  }
+});
