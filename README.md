@@ -104,6 +104,7 @@ Requires Node 20+.
 # See what you'd save, from your local Claude Code history (~/.claude/projects)
 npx dejactx audit
 npx dejactx audit --since 7d --project my-app
+npx dejactx audit --tune          # find the best --min-age for how *you* work
 
 # Run Claude Code through deja: deja's flags go before `claude`, Claude Code's after it
 npx dejactx claude
