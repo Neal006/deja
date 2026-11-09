@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MessagesRequest } from "../src/anthropic/types.js";
-import { decide, DEFAULT_DECAY, freshState } from "../src/decay/policy.js";
+import { decayFromEnv, decide, DEFAULT_DECAY, freshState } from "../src/decay/policy.js";
 import { Conversation } from "./helpers/conversation.js";
 
 const log = Array.from({ length: 200 }, (_, i) => `PASS test/suite-${i}.test.ts (${i} ms) all good here`).join("\n");
@@ -76,5 +76,17 @@ describe("decide", () => {
     const s = freshState();
     decide(session(0), s, 1234);
     expect(s.lastSeen).toBe(1234);
+  });
+});
+
+describe("decayFromEnv", () => {
+  it("keeps defaults without overrides", () => {
+    expect(decayFromEnv({})).toEqual(DEFAULT_DECAY);
+  });
+  it("reads overrides", () => {
+    expect(decayFromEnv({ DEJA_MIN_AGE: "2", DEJA_MIN_SAVING: "50" })).toMatchObject({ minAge: 2, minSaving: 50 });
+  });
+  it("ignores invalid values", () => {
+    expect(decayFromEnv({ DEJA_MIN_AGE: "-1", DEJA_MIN_SAVING: "lots" })).toEqual(DEFAULT_DECAY);
   });
 });

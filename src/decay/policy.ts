@@ -37,6 +37,19 @@ export const DEFAULT_DECAY: DecayConfig = {
   readMultiplier: CACHE_READ_MULTIPLIER,
 };
 
+/** Read decay overrides from the environment (DEJA_MIN_AGE, DEJA_MIN_SAVING). */
+export function decayFromEnv(env: NodeJS.ProcessEnv = process.env, base: DecayConfig = DEFAULT_DECAY): DecayConfig {
+  const num = (v: string | undefined) => {
+    const n = Number(v);
+    return v !== undefined && v !== "" && Number.isFinite(n) && n >= 0 ? n : undefined;
+  };
+  return {
+    ...base,
+    minAge: num(env.DEJA_MIN_AGE) ?? base.minAge,
+    minSaving: num(env.DEJA_MIN_SAVING) ?? base.minSaving,
+  };
+}
+
 export interface ConversationState {
   /** Rent paid since the last eviction, in base-token units. */
   rent: number;
