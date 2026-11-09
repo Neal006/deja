@@ -12,7 +12,12 @@ import { startProxy } from "./start.js";
  */
 export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedArgs): Promise<number> {
   const upstream = resolveUpstream(flagString(args.flags, "upstream"));
-  const proxy = await startProxy({ port: 0, upstream, enabled: args.flags.off !== true });
+  const proxy = await startProxy({
+    port: 0,
+    upstream,
+    enabled: args.flags.off !== true,
+    decay: args.flags.decay !== false,
+  });
 
   const env = {
     ...process.env,
