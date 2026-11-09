@@ -109,6 +109,7 @@ Requires Node 20+. Every command works two ways: `npx dejactx <command>` with no
 npx dejactx audit
 npx dejactx audit --since 7d --project my-app
 npx dejactx audit --tune          # find the best --min-age for how *you* work
+npx dejactx audit --agent codex   # replay Codex CLI history (~/.codex/sessions) instead
 
 # Run Claude Code through deja: deja's flags go before `claude`, Claude Code's after it
 npx dejactx claude
@@ -210,9 +211,8 @@ deja is new (0.1). The engines are fuzz-tested, the cost model is checked agains
 
 Next up:
 
-- `deja audit` for other agents' transcripts (Codex, Cline, OpenCode)
+- `deja audit` for more agents' transcripts (Codex is supported; Cline and OpenCode next)
 - per-tool stub formats (`git diff`, package managers, test runners)
-- a calibrated token estimator, using the provider counts deja already records
 - an npm release
 
 ## Development
