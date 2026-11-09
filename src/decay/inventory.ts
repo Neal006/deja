@@ -16,7 +16,11 @@ export interface Item {
   id: string;
   kind: "result" | "input";
   messageIndex: number;
-  /** Requests that have carried this item since it appeared. */
+  /**
+   * Requests since the item was last *used*: since it appeared, or since a
+   * later tool call touched the same file (an Edit of a file keeps its Read
+   * alive, because the model needs the content to edit it).
+   */
   age: number;
   /** Tokens we would save by stubbing it. */
   saving: number;
@@ -56,11 +60,25 @@ export function messageTokens(msg: Message): number {
   return n;
 }
 
+const PATH_KEYS = ["file_path", "path", "filePath", "target_file", "notebook_path", "absolute_path"];
+
+/** The file a tool call is about, if any. */
+export function inputPath(input: Record<string, unknown> | undefined): string | undefined {
+  if (!input) return undefined;
+  for (const k of PATH_KEYS) {
+    const v = input[k];
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  return undefined;
+}
+
 export function takeInventory(body: MessagesRequest): Inventory {
   const msgs = body.messages;
   const messageTokens: number[] = [];
   const items: Item[] = [];
-  const names = new Map<string, string>();
+  const paths = new Map<string, string>();
+  /** For each file, the message indices of later edits/writes to it. */
+  const touches = new Map<string, number[]>();
   let key: string | undefined;
 
   // Age = number of assistant messages after the item, i.e. how many
@@ -85,7 +103,16 @@ export function takeInventory(body: MessagesRequest): Inventory {
       if (b.type === "tool_use") {
         const use = b as ToolUseBlock;
         key ??= use.id;
-        names.set(use.id, use.name);
+        const path = inputPath(use.input);
+        if (path) {
+          paths.set(use.id, path);
+          // Only edits keep earlier content alive; a fresh read supersedes it.
+          if (FILE_INPUT_TOOLS.has(use.name)) {
+            const list = touches.get(path);
+            if (list) list.push(i);
+            else touches.set(path, [i]);
+          }
+        }
         if (FILE_INPUT_TOOLS.has(use.name)) {
           const chars = longStringChars(use.input ?? {});
           const saving = Math.round(chars / 4) - INPUT_STUB_TOKENS;
@@ -100,6 +127,14 @@ export function takeInventory(body: MessagesRequest): Inventory {
     }
     messageTokens.push(tokens);
   });
+
+  // Refresh the age of items whose file was touched again later.
+  for (const it of items) {
+    const path = paths.get(it.id);
+    const list = path ? touches.get(path) : undefined;
+    const last = list?.[list.length - 1];
+    if (last !== undefined && last > it.messageIndex) it.age = assistantsAfter[last]!;
+  }
   return { items, messageTokens, key };
 }
 
