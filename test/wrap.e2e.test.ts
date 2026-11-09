@@ -18,7 +18,8 @@ let upstreamUrl: string;
 let lastBody = "";
 
 beforeAll(async () => {
-  await run("npx", ["tsc", "-p", "tsconfig.json"], { cwd: ROOT });
+  // Run tsc through node directly: `npx` is a .cmd shim on Windows.
+  await run(process.execPath, [join(ROOT, "node_modules", "typescript", "bin", "tsc"), "-p", "tsconfig.json"], { cwd: ROOT });
   upstream = createServer((req, res) => {
     const chunks: Buffer[] = [];
     req.on("data", (c: Buffer) => chunks.push(c));
@@ -32,7 +33,7 @@ beforeAll(async () => {
   upstreamUrl = `http://127.0.0.1:${(upstream.address() as AddressInfo).port}`;
 }, 60_000);
 
-afterAll(() => new Promise<void>((r) => upstream.close(() => r())));
+afterAll(() => new Promise<void>((r) => (upstream ? upstream.close(() => r()) : r())));
 
 describe("deja run (end to end)", () => {
   it("routes a child agent through the proxy and records savings", async () => {
