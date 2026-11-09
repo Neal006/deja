@@ -18,6 +18,10 @@ async function main(argv: string[]): Promise<number> {
   const own = claudeAt === -1 ? argv : argv.slice(0, claudeAt + 1);
   const args = parseArgs(own);
 
+  if (args.flags.help === true || args.flags.h === true) {
+    process.stdout.write(HELP);
+    return 0;
+  }
   if (args.flags.version === true || args.flags.v === true) {
     process.stdout.write(`${VERSION}\n`);
     return 0;
