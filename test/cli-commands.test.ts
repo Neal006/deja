@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildReport, byModel, dailySaved, renderModels, renderReport } from "../src/cli/commands/stats.js";
 import { eventLine, listenError, skipToolsFromArgs, startProxy } from "../src/cli/commands/start.js";
-import { launchError } from "../src/cli/commands/wrap.js";
+import { launchError, startLine } from "../src/cli/commands/wrap.js";
 import { parseArgs } from "../src/cli/args.js";
 import { summaryLine } from "../src/cli/summary.js";
 import type { LedgerEntry } from "../src/core/ledger.js";
@@ -172,5 +172,15 @@ describe("listenError", () => {
     const first = await startProxy({ port: 0, upstream: "http://127.0.0.1:1", ledger, decay: false });
     await expect(startProxy({ port: first.port, upstream: "http://127.0.0.1:1", ledger, decay: false })).rejects.toMatchObject({ code: "EADDRINUSE" });
     await new Promise((r) => first.server.close(r));
+  });
+});
+
+describe("startLine", () => {
+  it("names the mode, proxy and upstream", () => {
+    expect(startLine("http://127.0.0.1:5", "https://api.anthropic.com", parseArgs([]), false)).toBe(
+      "deja ⟲ dedup + decay · http://127.0.0.1:5 → https://api.anthropic.com",
+    );
+    expect(startLine("u", "x", parseArgs(["--off"]), false)).toContain("off (pass-through)");
+    expect(startLine("u", "x", parseArgs(["--no-decay"]), false)).toContain("dedup only");
   });
 });
