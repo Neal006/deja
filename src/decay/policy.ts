@@ -33,6 +33,8 @@ export interface DecayConfig {
    * endpoints). Every request is billed in full, so eviction is always free.
    */
   uncached?: boolean;
+  /** Tools whose output and inputs must never be stubbed. */
+  skipTools?: readonly string[];
 }
 
 export const DEFAULT_DECAY: DecayConfig = {
@@ -89,7 +91,10 @@ export interface DecayDecision {
 export function decide(body: MessagesRequest, state: ConversationState, now: number, cfg: DecayConfig = DEFAULT_DECAY): DecayDecision {
   const inv = takeInventory(body);
   const evict = new Set(state.evicted);
-  const candidates = inv.items.filter((it) => !evict.has(it.id) && it.age >= cfg.minAge && it.saving >= cfg.minSaving);
+  const skip = new Set(cfg.skipTools ?? []);
+  const candidates = inv.items.filter(
+    (it) => !evict.has(it.id) && !skip.has(it.tool) && it.age >= cfg.minAge && it.saving >= cfg.minSaving,
+  );
 
   const idle = state.lastSeen === undefined || now - state.lastSeen > cacheTtlMs(body);
   state.lastSeen = now;

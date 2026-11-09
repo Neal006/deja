@@ -82,6 +82,12 @@ describe("decide", () => {
     expect(d.evict.has("toolu_0001")).toBe(true);
   });
 
+  it("never evicts skipped tools", () => {
+    const s = freshState();
+    const d = decide(session(6), s, 0, { ...DEFAULT_DECAY, skipTools: ["Bash"] });
+    expect(d.evict.size).toBe(0);
+  });
+
   it("updates lastSeen", () => {
     const s = freshState();
     decide(session(0), s, 1234);
