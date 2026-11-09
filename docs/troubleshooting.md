@@ -1,5 +1,7 @@
 # Troubleshooting
 
+If `deja` does something unexpected, check that it came from the right package: `npm ls -g dejactx` should list it. The npm package named `deja` is an unrelated project with its own `deja` command; remove it with `npm rm -g deja` and install `dejactx` instead.
+
 Start with `deja doctor`. It checks Node, the deja home directory, Claude Code, your history and the upstream in one go.
 
 ## `deja claude` starts, but `deja stats` shows nothing

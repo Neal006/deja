@@ -12,6 +12,8 @@ npx dejactx audit      # what did stale context cost you? (reads local history, 
 npx dejactx claude     # run Claude Code through deja
 ```
 
+> **The npm package is `dejactx`, not `deja`.** The `deja` package on npm is an unrelated project, so never run `npx deja` or `npm i deja`. Installing `dejactx` globally (`npm i -g dejactx`) gives you the `deja` command used below.
+
 On 51 real Claude Code sessions (2,922 API requests), replayed request by request with exact prompt-cache billing:
 
 | strategy | input bill | average prompt |
@@ -98,7 +100,7 @@ Evictions are sticky and persisted, so after an eviction the new prefix is stabl
 
 ## Install and use
 
-Requires Node 20+.
+Requires Node 20+. Every command works two ways: `npx dejactx <command>` with nothing installed, or `deja <command>` after `npm i -g dejactx`.
 
 ```bash
 # See what you'd save, from your local Claude Code history (~/.claude/projects)
