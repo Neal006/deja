@@ -3,6 +3,8 @@ import { aggregate, renderAudit, renderProjects, renderShare, renderTune, type T
 import { STRATEGIES, type Strategy } from "../../audit/replay.js";
 import { simulateMany } from "../../audit/pool.js";
 import { UNCACHED_BILLING } from "../../audit/billing.js";
+import { calibrate } from "../../core/calibration.js";
+import { readEntries } from "../../core/ledger.js";
 import { DEFAULT_DECAY } from "../../decay/policy.js";
 import { flagNumber, flagString, parseDuration, type ParsedArgs } from "../args.js";
 import { useColor } from "../format.js";
@@ -60,7 +62,9 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
   );
   if (progress) process.stderr.write("\r\x1b[2K");
 
-  const report = aggregate(sessions, { model: flagString(args.flags, "model"), top: flagNumber(args.flags, "top"), uncached });
+  // Scale dollar figures by what deja has measured on real traffic, if enough.
+  const calibration = args.flags.calibrate === false ? undefined : calibrate(readEntries());
+  const report = aggregate(sessions, { model: flagString(args.flags, "model"), top: flagNumber(args.flags, "top"), uncached, calibration });
   if (args.flags.share === true) {
     process.stdout.write(`${renderShare(report)}\n`);
   } else if (args.flags.json === true) {

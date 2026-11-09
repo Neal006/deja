@@ -10,6 +10,8 @@ export interface AuditReport {
   subagents: number;
   /** Billed as if the provider had no prompt cache. */
   uncached?: boolean;
+  /** Estimator correction applied to dollar figures, from measured traffic. */
+  calibration?: { factor: number; requests: number };
   /** Model used for pricing. */
   model?: string;
   sessions: number;
@@ -44,6 +46,7 @@ export interface ProjectRow {
 
 export interface AggregateOptions {
   uncached?: boolean;
+  calibration?: { factor: number; requests: number };
   model?: string;
   top?: number;
   env?: NodeJS.ProcessEnv;
@@ -64,6 +67,7 @@ export function aggregate(sessions: SessionStat[], opts: AggregateOptions = {}):
   const r: AuditReport = {
     subagents: 0,
     ...(opts.uncached ? { uncached: true } : {}),
+    ...(opts.calibration ? { calibration: opts.calibration } : {}),
     model,
     sessions: 0,
     requests: 0,
@@ -130,7 +134,7 @@ export function aggregate(sessions: SessionStat[], opts: AggregateOptions = {}):
 
 /** Dollars for a cost expressed in base-input-token units. */
 export function dollars(r: AuditReport, units: number): number {
-  return (units * r.pricePerMillion) / 1_000_000;
+  return (units * r.pricePerMillion * (r.calibration?.factor ?? 1)) / 1_000_000;
 }
 
 const LABELS: Record<Strategy, string> = {
@@ -175,7 +179,10 @@ export function renderAudit(r: AuditReport, color: boolean): string {
     const cut = 1 - deja.cost / base.cost;
     out.push(
       `  ${p.bold("deja would have cut your input bill by")} ${p.bold(p.green(`${(cut * 100).toFixed(1)}%`))}` +
-        p.dim(` (≈ ${usd(dollars(r, base.cost - deja.cost))} at $${r.pricePerMillion}/M input${r.model ? `, ${r.model}` : ""})`),
+        p.dim(
+          ` (≈ ${usd(dollars(r, base.cost - deja.cost))} at $${r.pricePerMillion}/M input${r.model ? `, ${r.model}` : ""}` +
+            `${r.calibration ? `, calibrated ×${r.calibration.factor.toFixed(2)} from ${r.calibration.requests} measured requests` : ""})`,
+        ),
     );
     out.push(
       `  ${p.dim("average prompt")} ${formatTokens(Math.round(base.promptTokens / base.requests))} ${p.dim("→")} ${p.bold(formatTokens(Math.round(deja.promptTokens / deja.requests)))} ${p.dim("tokens")}`,

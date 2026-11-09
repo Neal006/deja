@@ -211,3 +211,12 @@ describe("tuning", () => {
     expect(out).toContain("deja --min-age 5 claude");
   });
 });
+
+describe("calibration", () => {
+  it("scales dollar figures and says so", () => {
+    const plain = aggregate([session()], { env: {} });
+    const cal = aggregate([session()], { env: {}, calibration: { factor: 1.5, requests: 40 } });
+    expect(dollars(cal, 1_000_000)).toBeCloseTo(dollars(plain, 1_000_000) * 1.5);
+    expect(renderAudit(cal, false)).toContain("calibrated ×1.50 from 40 measured requests");
+  });
+});
