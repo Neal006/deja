@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bar, paint, percent, usd, useColor } from "../src/cli/format.js";
+import { bar, paint, percent, sparkline, usd, useColor } from "../src/cli/format.js";
 
 const tty = { isTTY: true } as NodeJS.WriteStream;
 const pipe = { isTTY: false } as NodeJS.WriteStream;
@@ -36,4 +36,10 @@ describe("bar", () => {
     expect(bar(2, 3)).toBe("███");
     expect(bar(-1, 3)).toBe("░░░");
   });
+});
+
+describe("sparkline", () => {
+  it("scales to the maximum", () => expect(sparkline([0, 4, 8])).toBe("▁▅█"));
+  it("is flat for all zeros", () => expect(sparkline([0, 0])).toBe("▁▁"));
+  it("treats negatives as zero", () => expect(sparkline([-5, 10])).toBe("▁█"));
 });

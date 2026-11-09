@@ -48,3 +48,12 @@ export function bar(fraction: number, width = 24): string {
   const full = Math.round(f * width);
   return "█".repeat(full) + "░".repeat(width - full);
 }
+
+const SPARKS = "▁▂▃▄▅▆▇█";
+
+/** A unicode sparkline; zeros render as a flat baseline. */
+export function sparkline(values: number[]): string {
+  const max = Math.max(0, ...values);
+  if (max <= 0) return SPARKS[0]!.repeat(values.length);
+  return values.map((v) => SPARKS[Math.min(SPARKS.length - 1, Math.round((Math.max(0, v) / max) * (SPARKS.length - 1)))]!).join("");
+}
