@@ -31,7 +31,8 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
   }
 
   const code = await new Promise<number>((resolve) => {
-    const child = spawn(cmd, cmdArgs, { stdio: "inherit", env });
+    // On Windows most agent CLIs are .cmd shims, which need a shell.
+    const child = spawn(cmd, cmdArgs, { stdio: "inherit", env, shell: process.platform === "win32" });
     child.on("error", (err) => {
       process.stderr.write(`deja: could not start ${cmd}: ${err.message}\n`);
       resolve(127);

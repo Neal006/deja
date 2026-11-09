@@ -32,7 +32,7 @@ export function checkHome(home = dejaHome()): Check {
 }
 
 export function checkClaude(bin = process.env.DEJA_CLAUDE_BIN ?? "claude"): Check {
-  const r = spawnSync(bin, ["--version"], { encoding: "utf8", timeout: 10_000 });
+  const r = spawnSync(bin, ["--version"], { encoding: "utf8", timeout: 10_000, shell: process.platform === "win32" });
   if (r.error || r.status !== 0) {
     return { name: "claude code", status: "warn", detail: `"${bin}" not found; needed for \`deja claude\` (other agents work via \`deja run\`)` };
   }
