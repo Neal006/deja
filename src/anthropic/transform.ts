@@ -2,11 +2,8 @@ import { compressText, DEFAULT_COMPRESS, type CompressOptions } from "../core/co
 import { Dictionary, literalSource } from "../core/dictionary.js";
 import { findCwd, LabelRegistry, toolLabel } from "../core/labels.js";
 import { isNumbered, splitLines } from "../core/lines.js";
+import { WRITE_CONTENT_KEYS, WRITE_TOOLS } from "./tools.js";
 import type { ContentBlock, Message, MessagesRequest, TextBlock, ToolResultBlock, ToolUseBlock } from "./types.js";
-
-/** Tools whose input contains the full text of a file the model just wrote. */
-const WRITE_TOOLS = new Set(["Write", "write_file", "create_file", "write_to_file"]);
-const WRITE_CONTENT_KEYS = ["content", "file_text", "contents"];
 
 export interface TransformStats {
   toolResults: number;
