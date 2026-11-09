@@ -22,6 +22,7 @@ Usage
   deja statusline                  one-line live savings for Claude Code's
                                    status line
   deja setup statusline [--force]  add that status line to Claude Code
+  deja completion bash|zsh|fish    print a shell completion script
   deja help | --version
 
 Options

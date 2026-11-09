@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "./cli/args.js";
 import { auditCommand } from "./cli/commands/audit.js";
+import { completionCommand } from "./cli/commands/completion.js";
 import { doctorCommand } from "./cli/commands/doctor.js";
 import { previewCommand } from "./cli/commands/preview.js";
 import { setupCommand } from "./cli/commands/setup.js";
@@ -41,6 +42,8 @@ async function main(argv: string[]): Promise<number> {
       return statuslineCommand();
     case "setup":
       return setupCommand(args);
+    case "completion":
+      return completionCommand(args);
     case undefined:
     case "help":
       process.stdout.write(HELP);
