@@ -19,6 +19,7 @@ Usage
   deja start [--port 8787]         run the proxy in the foreground
   deja stats [--since 7d] [--json] show what deja has saved
             [--by-model]           … broken down per model
+            [--reset]              start a fresh ledger (the old one is kept)
   deja doctor                      check your setup
   deja statusline                  one-line live savings for Claude Code's
                                    status line

@@ -1,4 +1,4 @@
-import { ledgerPath, readEntries, totals, type LedgerEntry, type Totals } from "../../core/ledger.js";
+import { ledgerPath, readEntries, resetLedger, totals, type LedgerEntry, type Totals } from "../../core/ledger.js";
 import { formatTokens } from "../../core/tokens.js";
 import { flagString, parseDuration, type ParsedArgs } from "../args.js";
 import { bar, paint, percent, sparkline, usd, useColor } from "../format.js";
@@ -112,6 +112,11 @@ export function renderReport(report: StatsReport, color: boolean): string {
 }
 
 export function statsCommand(args: ParsedArgs): number {
+  if (args.flags.reset === true) {
+    const backup = resetLedger();
+    process.stdout.write(backup ? `deja: started a fresh ledger (previous one kept at ${backup})\n` : "deja: nothing to reset\n");
+    return 0;
+  }
   const sinceFlag = flagString(args.flags, "since");
   const since = sinceFlag ? parseDuration(sinceFlag) : undefined;
   if (sinceFlag && since === undefined) {

@@ -7,7 +7,7 @@ export const COMMANDS: Record<string, string[]> = {
   claude: ["--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools"],
   run: ["--openai", "--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools"],
   start: ["--port", "--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools", "--quiet", "--log"],
-  stats: ["--since", "--json", "--by-model", "--no-color"],
+  stats: ["--since", "--json", "--by-model", "--reset", "--no-color"],
   doctor: ["--upstream", "--offline"],
   statusline: [],
   setup: ["statusline", "--force"],
