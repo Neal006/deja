@@ -58,7 +58,10 @@ describe("parseTranscript", () => {
       L({ type: "system", subtype: "compact_boundary" }),
       L({ type: "user", message: { role: "user", content: "b" } }),
     ].join("\n");
-    expect(parseTranscript(text).segments).toHaveLength(2);
+    const segs = parseTranscript(text).segments;
+    expect(segs).toHaveLength(2);
+    expect(segs[0]!.compacted).toBe(true);
+    expect(segs[1]!.compacted).toBeUndefined();
   });
 
   it("merges consecutive user lines (parallel tool results)", () => {

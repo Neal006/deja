@@ -15,6 +15,8 @@ export interface Segment {
   messages: Message[];
   /** When each message was first seen (epoch ms), aligned with `messages`. */
   times: Array<number | undefined>;
+  /** True when this segment ended because Claude Code compacted the context. */
+  compacted?: boolean;
 }
 
 export interface Transcript {
@@ -53,8 +55,8 @@ export function parseTranscript(text: string, path = "<memory>"): Transcript {
   let lastAssistantId: string | undefined;
   const models = new Map<string, number>();
 
-  const closeSegment = () => {
-    if (messages.length > 0) t.segments.push({ messages, times });
+  const closeSegment = (compacted = false) => {
+    if (messages.length > 0) t.segments.push(compacted ? { messages, times, compacted } : { messages, times });
     messages = [];
     times = [];
     lastAssistantId = undefined;
@@ -81,7 +83,7 @@ export function parseTranscript(text: string, path = "<memory>"): Transcript {
     t.cwd ??= line.cwd;
 
     if (line.type === "system" && line.subtype === "compact_boundary") {
-      closeSegment();
+      closeSegment(true);
       continue;
     }
     if (line.type !== "user" && line.type !== "assistant") continue;
