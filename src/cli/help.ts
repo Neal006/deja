@@ -20,6 +20,7 @@ Options
   --upstream <url>   where to forward requests (default: $ANTHROPIC_BASE_URL
                      or https://api.anthropic.com)
   --off              forward requests untouched (A/B comparisons)
+  --no-decay         dedup only: never stub stale tool output
   --quiet            do not log one line per request (start)
 
 Environment
