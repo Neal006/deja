@@ -1,6 +1,6 @@
 import { transformRequest } from "../anthropic/transform.js";
 import type { Message, MessagesRequest } from "../anthropic/types.js";
-import { takeInventory } from "../decay/inventory.js";
+import { messageTokens, takeInventory } from "../decay/inventory.js";
 import { decide, DEFAULT_DECAY, freshState, type DecayConfig } from "../decay/policy.js";
 import { CacheBiller, DEFAULT_BILLING, messageHash, type Bill, type BillingConfig } from "./billing.js";
 import type { Segment } from "./transcript.js";
@@ -32,8 +32,13 @@ export function replaySegment(seg: Segment, strategy: Strategy, opts: ReplayOpti
   const biller = new CacheBiller(opts.billing ?? DEFAULT_BILLING);
   const decay = opts.decay ?? DEFAULT_DECAY;
   const state = freshState();
-  // Baseline hashes never change once computed, so memoise them.
-  const baseHashes: string[] = [];
+  // Transforms are prefix-deterministic: while the eviction set is unchanged,
+  // every message already sent is re-sent byte for byte. So hashes and token
+  // counts computed for earlier requests stay valid and only new messages
+  // need work. A change in the eviction set invalidates everything.
+  let hashes: string[] = [];
+  let tokens: number[] = [];
+  let evictKey = "";
 
   for (let j = 1; j < seg.messages.length; j++) {
     if (seg.messages[j]!.role !== "assistant") continue;
@@ -42,9 +47,8 @@ export function replaySegment(seg: Segment, strategy: Strategy, opts: ReplayOpti
     let sent: Message[];
 
     if (strategy === "baseline") {
-      sent = prompt;
-      while (baseHashes.length < prompt.length) baseHashes.push(messageHash(prompt[baseHashes.length]!));
-      biller.charge(baseHashes.slice(0, prompt.length), takeInventory(request(sent, opts.cwd)).messageTokens, time);
+      extend(prompt);
+      biller.charge(hashes.slice(0, prompt.length), tokens.slice(0, prompt.length), time);
       continue;
     }
 
@@ -61,9 +65,23 @@ export function replaySegment(seg: Segment, strategy: Strategy, opts: ReplayOpti
     }
     const opt = strategy === "eager" ? { evict, compress: NO_COMPRESS } : { evict };
     sent = transformRequest(body, opt).body.messages;
-    biller.charge(sent.map(messageHash), takeInventory(request(sent, opts.cwd)).messageTokens, time);
+    const key = evict ? [...evict].sort().join(",") : "";
+    if (key !== evictKey) {
+      evictKey = key;
+      hashes = [];
+      tokens = [];
+    }
+    extend(sent);
+    biller.charge(hashes.slice(0, sent.length), tokens.slice(0, sent.length), time);
   }
   return biller.bill;
+
+  function extend(sent: Message[]): void {
+    for (let i = hashes.length; i < sent.length; i++) {
+      hashes.push(messageHash(sent[i]!));
+      tokens.push(messageTokens(sent[i]!));
+    }
+  }
 }
 
 /** Compression settings that never match, so "eager" measures pruning alone. */
