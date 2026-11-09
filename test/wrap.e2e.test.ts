@@ -101,3 +101,35 @@ describe("deja statusline (end to end)", () => {
     expect(stdout).toMatch(/^deja ↓[\d.]+k? tok · \$/m);
   }, 30_000);
 });
+
+describe("deja start (end to end)", () => {
+  it("serves health, proxies, and prints a summary on SIGINT", async () => {
+    if (process.platform === "win32") return; // no SIGINT delivery to child processes on Windows
+    const { spawn } = await import("node:child_process");
+    const home = mkdtempSync(join(tmpdir(), "deja-start-"));
+    const child = spawn(process.execPath, [join(ROOT, "dist/cli.js"), "start", "--port", "0", "--upstream", upstreamUrl], {
+      env: { ...process.env, DEJA_HOME: home, NO_COLOR: "1" },
+    });
+    let stderr = "";
+    child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
+    const url = await new Promise<string>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`no listen line: ${stderr}`)), 10_000);
+      const check = () => {
+        const m = /listening on (http:\/\/127\.0\.0\.1:\d+)/.exec(stderr);
+        if (m) {
+          clearTimeout(t);
+          resolve(m[1]!);
+        } else setTimeout(check, 50);
+      };
+      check();
+    });
+    expect(((await (await fetch(`${url}/deja/health`)).json()) as { ok: boolean }).ok).toBe(true);
+    const file = numbered(code(80));
+    const body = JSON.stringify(new Conversation().tool("Read", { file_path: "/repo/a.ts" }, file).tool("Read", { file_path: "/repo/a.ts" }, file).build());
+    await (await fetch(`${url}/v1/messages`, { method: "POST", body })).text();
+    const exited = new Promise<number | null>((r) => child.on("exit", r));
+    child.kill("SIGINT");
+    expect(await exited).toBe(0);
+    expect(stderr).toMatch(/deja saved .* input tokens across 1 requests/);
+  }, 30_000);
+});
