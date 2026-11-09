@@ -12,9 +12,9 @@ describe("takeInventory", () => {
       .tool("Bash", { command: "npm test" }, log)
       .build();
     const inv = takeInventory(body);
-    expect(inv.items.map((i) => [i.id, i.kind, i.age])).toEqual([
-      ["toolu_0001", "result", 2],
-      ["toolu_0003", "result", 0],
+    expect(inv.items.map((i) => [i.id, i.kind, i.tool, i.age])).toEqual([
+      ["toolu_0001", "result", "Bash", 2],
+      ["toolu_0003", "result", "Bash", 0],
     ]);
     expect(inv.key).toBe("toolu_0001");
     expect(inv.messageTokens).toHaveLength(6);

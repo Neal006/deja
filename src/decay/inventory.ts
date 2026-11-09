@@ -15,6 +15,8 @@ export interface Item {
   /** The tool_use id the content belongs to. */
   id: string;
   kind: "result" | "input";
+  /** Name of the tool that produced the item. */
+  tool: string;
   messageIndex: number;
   /**
    * Requests since the item was last *used*: since it appeared, or since a
@@ -77,6 +79,7 @@ export function takeInventory(body: MessagesRequest): Inventory {
   const messageTokens: number[] = [];
   const items: Item[] = [];
   const paths = new Map<string, string>();
+  const tools = new Map<string, string>();
   /** For each file, the message indices of later edits/writes to it. */
   const touches = new Map<string, number[]>();
   let key: string | undefined;
@@ -103,6 +106,7 @@ export function takeInventory(body: MessagesRequest): Inventory {
       if (b.type === "tool_use") {
         const use = b as ToolUseBlock;
         key ??= use.id;
+        tools.set(use.id, use.name);
         const path = inputPath(use.input);
         if (path) {
           paths.set(use.id, path);
@@ -116,13 +120,15 @@ export function takeInventory(body: MessagesRequest): Inventory {
         if (FILE_INPUT_TOOLS.has(use.name)) {
           const chars = longStringChars(use.input ?? {});
           const saving = Math.round(chars / 4) - INPUT_STUB_TOKENS;
-          if (saving > 0) items.push({ id: use.id, kind: "input", messageIndex: i, age: assistantsAfter[i]!, saving });
+          if (saving > 0) items.push({ id: use.id, kind: "input", tool: use.name, messageIndex: i, age: assistantsAfter[i]!, saving });
         }
       } else if (b.type === "tool_result") {
         const r = b as ToolResultBlock;
         if (r.is_error) continue;
         const saving = t - RESULT_STUB_TOKENS;
-        if (saving > 0) items.push({ id: r.tool_use_id, kind: "result", messageIndex: i, age: assistantsAfter[i]!, saving });
+        if (saving > 0) {
+          items.push({ id: r.tool_use_id, kind: "result", tool: tools.get(r.tool_use_id) ?? "tool", messageIndex: i, age: assistantsAfter[i]!, saving });
+        }
       }
     }
     messageTokens.push(tokens);
