@@ -1,10 +1,10 @@
 {
-  "name": "tokenwarden",
+  "name": "dejactx",
   "version": "0.1.0",
-  "description": "A context firewall for AI coding agents. Delta reads, output distillation and skeleton reads that cut token usage in Claude Code sessions.",
+  "description": "Déjà vu for your coding agent: cache-safe back-reference compression that stops AI agents from paying twice for context they have already seen.",
   "type": "module",
   "bin": {
-    "tokenwarden": "dist/cli.js"
+    "deja": "dist/cli.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,12 +25,14 @@
   "keywords": [
     "claude-code",
     "tokens",
-    "context",
+    "context-window",
+    "compression",
+    "prompt-caching",
     "llm",
     "ai-agents",
     "vibecoding",
-    "hooks",
-    "cost"
+    "proxy",
+    "dedup"
   ],
   "author": "Neal006",
   "license": "MIT",
