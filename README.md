@@ -85,6 +85,17 @@ This is the classic **ski-rental problem**. deja pays rent until the rent paid e
 
 Evictions are sticky and persisted, so after an eviction the new prefix is stable and cacheable again.
 
+## How deja compares
+
+| approach | what it does | prompt cache | the catch |
+|---|---|---|---|
+| **auto-compaction** (built into agents) | summarises the conversation when the window fills | rebuilt from scratch | lossy, and only kicks in at the limit |
+| **eager context pruning** | drops old tool results as soon as they're old | broken on every prune | can cost *more* than doing nothing (see above) |
+| **TTL-only pruning** | prunes only after the cache has expired | preserved | misses every saving inside an active session |
+| **output filters** (shorter test/build logs) | shrink tool output before the agent sees it | unaffected | lossy at the source; complementary to deja |
+| **repo maps / code search tools** | help the agent read less | unaffected | complementary to deja |
+| **deja** | exact back-references and cost-modelled eviction | preserved, or rebuilt only when it pays off | stubs are lossy by design, but the content is re-creatable |
+
 ## Install and use
 
 Requires Node 20+.
