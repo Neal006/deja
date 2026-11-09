@@ -45,6 +45,11 @@ describe("ledger", () => {
     expect(resetLedger(join(mkdtempSync(join(tmpdir(), "deja-")), "none.jsonl"))).toBeUndefined();
   });
 
+  it("totals stubs and re-runs", () => {
+    const t = totals([entry({ st: 3 }), entry({ st: 2, rr: 1 })]);
+    expect([t.stubs, t.reruns]).toEqual([5, 1]);
+  });
+
   it("totals measured usage separately", () => {
     const t = totals([entry({ in: 10, cr: 1000, cw: 50, out: 7 }), entry()]);
     expect(t.measured).toBe(1);

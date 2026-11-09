@@ -10,7 +10,7 @@ const event: ProxyEvent = {
   path: "/v1/messages",
   model: "claude-sonnet-4-5",
   ms: 1,
-  stats: { evictedResults: 0, evictedInputs: 0, toolResults: 4, compressed: 2, tokensBefore: 10_000, tokensAfter: 4_000, freshSaved: 1_000 },
+  stats: { evictedResults: 0, evictedInputs: 0, rerunsOfStubbed: 0, toolResults: 4, compressed: 2, tokensBefore: 10_000, tokensAfter: 4_000, freshSaved: 1_000 },
 };
 
 describe("toEntry", () => {

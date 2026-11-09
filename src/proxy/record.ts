@@ -16,6 +16,8 @@ export function toEntry(event: ProxyEvent, now = Date.now()): LedgerEntry {
     freshSaved: s.freshSaved,
     usd: dollarsSaved(event.model, s.freshSaved, saved),
   };
+  if (event.decay && event.decay.newlyEvicted > 0) entry.st = event.decay.newlyEvicted;
+  if (s.rerunsOfStubbed > 0) entry.rr = s.rerunsOfStubbed;
   if (event.usage) {
     entry.in = event.usage.input;
     entry.cr = event.usage.cacheRead;

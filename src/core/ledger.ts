@@ -23,6 +23,10 @@ export interface LedgerEntry {
   out?: number;
   /** deja's estimate of the prompt tokens sent, for calibration. */
   est?: number;
+  /** Stubs newly applied on this request. */
+  st?: number;
+  /** Calls in this turn that re-targeted stubbed content. */
+  rr?: number;
 }
 
 export function dejaHome(env: NodeJS.ProcessEnv = process.env): string {
@@ -63,6 +67,9 @@ export interface Totals {
   output: number;
   /** deja's estimate of prompt tokens, summed over measured requests. */
   estimated: number;
+  /** Stub events and re-runs of stubbed content. */
+  stubs: number;
+  reruns: number;
   compressedResults: number;
   tokensBefore: number;
   tokensAfter: number;
@@ -80,6 +87,8 @@ export function totals(entries: LedgerEntry[], since = 0): Totals {
     cacheWrite: 0,
     output: 0,
     estimated: 0,
+    stubs: 0,
+    reruns: 0,
     compressedResults: 0,
     tokensBefore: 0,
     tokensAfter: 0,
@@ -93,6 +102,8 @@ export function totals(entries: LedgerEntry[], since = 0): Totals {
     t.tokensBefore += e.tokensBefore;
     t.tokensAfter += e.tokensAfter;
     t.usd += e.usd;
+    t.stubs += e.st ?? 0;
+    t.reruns += e.rr ?? 0;
     if (e.in !== undefined) {
       t.measured++;
       t.input += e.in;
