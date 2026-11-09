@@ -43,9 +43,9 @@ describe("discoverTranscripts", () => {
 
 describe("claudeProjectsDir", () => {
   it("respects CLAUDE_CONFIG_DIR", () => {
-    expect(claudeProjectsDir({ CLAUDE_CONFIG_DIR: "/cfg" })).toBe("/cfg/projects");
+    expect(claudeProjectsDir({ CLAUDE_CONFIG_DIR: "/cfg" })).toBe(join("/cfg", "projects"));
   });
   it("defaults to ~/.claude/projects", () => {
-    expect(claudeProjectsDir({})).toMatch(/\.claude\/projects$/);
+    expect(claudeProjectsDir({}).endsWith(join(".claude", "projects"))).toBe(true);
   });
 });

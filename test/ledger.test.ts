@@ -11,7 +11,7 @@ function entry(over: Partial<LedgerEntry> = {}): LedgerEntry {
 describe("ledger", () => {
   it("resolves paths from DEJA_HOME", () => {
     expect(dejaHome({ DEJA_HOME: "/x" })).toBe("/x");
-    expect(ledgerPath({ DEJA_HOME: "/x" })).toBe("/x/ledger.jsonl");
+    expect(ledgerPath({ DEJA_HOME: "/x" })).toBe(join("/x", "ledger.jsonl"));
   });
 
   it("round-trips entries", () => {
