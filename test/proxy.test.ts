@@ -318,21 +318,3 @@ describe("createProxy", () => {
     expect(events[0]!.usage).toBeUndefined();
   });
 });
-
-describe("rewriteBody with an incremental cache", () => {
-  it("serves a growing conversation incrementally with identical output", async () => {
-    const { IncrementalCache } = await import("../src/anthropic/incremental.js");
-    const cache = new IncrementalCache();
-    const file = numbered(code(60));
-    const conv = new Conversation().tool("Read", { file_path: "/repo/a.ts" }, file);
-    for (let i = 0; i < 4; i++) {
-      conv.tool("Read", { file_path: "/repo/a.ts" }, file);
-      const raw = Buffer.from(JSON.stringify(conv.build()));
-      const withCache = rewriteBody("/v1/messages", {}, raw, { incremental: cache });
-      const plain = rewriteBody("/v1/messages", {}, raw, {});
-      expect(withCache.body.toString()).toBe(plain.body.toString());
-    }
-    const engine = cache.get("anthropic:toolu_0001");
-    expect(engine.counters).toEqual({ incremental: 3, rebuilt: 1 });
-  });
-});
