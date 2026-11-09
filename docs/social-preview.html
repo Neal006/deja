@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>deja social preview</title>
+<style>
+  html, body { margin: 0; width: 1280px; height: 640px; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 88px;
+    box-sizing: border-box;
+  }
+  .name { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 96px; font-weight: 700; color: #d2a8ff; letter-spacing: -2px; }
+  .tag { font-size: 40px; margin-top: 12px; line-height: 1.25; max-width: 1040px; }
+  .nums { display: flex; gap: 56px; margin-top: 52px; }
+  .num b { display: block; font-size: 60px; color: #7ee787; font-weight: 700; }
+  .num span { font-size: 22px; color: #8b949e; }
+  .bad b { color: #ff7b72; }
+  .foot { margin-top: 48px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 26px; color: #8b949e; }
+  .foot em { color: #79c0ff; font-style: normal; }
+</style>
+</head>
+<body>
+  <div class="name">deja</div>
+  <div class="tag">Your coding agent pays for the same context again and again. deja stops that, without breaking the prompt cache.</div>
+  <div class="nums">
+    <div class="num"><b>−30.7%</b><span>input bill, 51 real Claude Code sessions</span></div>
+    <div class="num"><b>−44%</b><span>context at auto-compaction</span></div>
+    <div class="num bad"><b>+22%</b><span>what naive pruning can add</span></div>
+  </div>
+  <div class="foot"><em>npx dejactx audit</em> · github.com/Neal006/deja</div>
+</body>
+</html>
