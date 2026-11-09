@@ -32,6 +32,12 @@ describe("ledger", () => {
     expect(readEntries(path)).toHaveLength(1);
   });
 
+  it("totals measured usage separately", () => {
+    const t = totals([entry({ in: 10, cr: 1000, cw: 50, out: 7 }), entry()]);
+    expect(t.measured).toBe(1);
+    expect([t.input, t.cacheRead, t.cacheWrite, t.output]).toEqual([10, 1000, 50, 7]);
+  });
+
   it("totals entries since a time", () => {
     const t = totals([entry({ t: 1 }), entry({ t: 5 }), entry({ t: 10 })], 5);
     expect(t.requests).toBe(2);

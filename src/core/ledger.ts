@@ -16,6 +16,11 @@ export interface LedgerEntry {
   tokensAfter: number;
   freshSaved: number;
   usd: number;
+  /** Provider-reported usage, when the response carried it. */
+  in?: number;
+  cr?: number;
+  cw?: number;
+  out?: number;
 }
 
 export function dejaHome(env: NodeJS.ProcessEnv = process.env): string {
@@ -47,6 +52,13 @@ export function readEntries(path = ledgerPath()): LedgerEntry[] {
 
 export interface Totals {
   requests: number;
+  /** Requests whose provider-reported usage is known. */
+  measured: number;
+  /** Provider-reported uncached input tokens. */
+  input: number;
+  cacheRead: number;
+  cacheWrite: number;
+  output: number;
   compressedResults: number;
   tokensBefore: number;
   tokensAfter: number;
@@ -56,7 +68,19 @@ export interface Totals {
 }
 
 export function totals(entries: LedgerEntry[], since = 0): Totals {
-  const t: Totals = { requests: 0, compressedResults: 0, tokensBefore: 0, tokensAfter: 0, saved: 0, usd: 0 };
+  const t: Totals = {
+    requests: 0,
+    measured: 0,
+    input: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    output: 0,
+    compressedResults: 0,
+    tokensBefore: 0,
+    tokensAfter: 0,
+    saved: 0,
+    usd: 0,
+  };
   for (const e of entries) {
     if (e.t < since) continue;
     t.requests++;
@@ -64,6 +88,13 @@ export function totals(entries: LedgerEntry[], since = 0): Totals {
     t.tokensBefore += e.tokensBefore;
     t.tokensAfter += e.tokensAfter;
     t.usd += e.usd;
+    if (e.in !== undefined) {
+      t.measured++;
+      t.input += e.in;
+      t.cacheRead += e.cr ?? 0;
+      t.cacheWrite += e.cw ?? 0;
+      t.output += e.out ?? 0;
+    }
     if (t.since === undefined || e.t < t.since) t.since = e.t;
   }
   t.saved = t.tokensBefore - t.tokensAfter;
