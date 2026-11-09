@@ -188,6 +188,15 @@ export function renderAudit(r: AuditReport, color: boolean): string {
     }
   }
 
+  if (deja?.stubs) {
+    out.push("");
+    out.push(
+      `  ${p.dim("deja would have stubbed")} ${deja.stubs.toLocaleString("en-US")} ${p.dim("stale outputs. Your agent called the same target again later for")} ` +
+        `${p.bold(String(deja.reruns ?? 0))} ${p.dim(`of them (${percent(deja.reruns ?? 0, deja.stubs)}),`)}`,
+    );
+    out.push(`  ${p.dim("re-runs that happened without deja (e.g. tests after an edit), so stubbing them costs nothing extra.")}`);
+  }
+
   if (r.compactions.count > 0) {
     const c = r.compactions;
     const before = c.baseline / c.count;

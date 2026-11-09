@@ -160,6 +160,15 @@ describe("compactions", () => {
   });
 });
 
+describe("stub re-runs", () => {
+  it("reports how rarely stubbed output was needed again", () => {
+    const s = session({ bills: { baseline: bill(1_000_000), deja: { ...bill(700_000), stubs: 200, reruns: 6 } } });
+    const out = renderAudit(aggregate([s], { env: {} }), false);
+    expect(out).toContain("deja would have stubbed 200 stale outputs. Your agent called the same target again later for 6 of them (3.0%),");
+    expect(out).toContain("re-runs that happened without deja");
+  });
+});
+
 describe("uncached reports", () => {
   it("say that nothing was cached", () => {
     const out = renderAudit(aggregate([session()], { env: {}, uncached: true }), false);
