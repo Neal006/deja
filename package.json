@@ -1,0 +1,37 @@
+{
+  "name": "tokenwarden",
+  "version": "0.1.0",
+  "description": "A context firewall for AI coding agents. Delta reads, output distillation and skeleton reads that cut token usage in Claude Code sessions.",
+  "type": "module",
+  "bin": {
+    "tokenwarden": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "claude-code",
+    "tokens",
+    "context",
+    "llm",
+    "ai-agents",
+    "vibecoding",
+    "hooks",
+    "cost"
+  ],
+  "author": "Neal006",
+  "license": "MIT"
+}
