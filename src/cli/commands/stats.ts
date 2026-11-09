@@ -1,0 +1,63 @@
+import { ledgerPath, readEntries, totals, type LedgerEntry, type Totals } from "../../core/ledger.js";
+import { formatTokens } from "../../core/tokens.js";
+import { flagString, parseDuration, type ParsedArgs } from "../args.js";
+import { bar, paint, percent, usd, useColor } from "../format.js";
+
+const DAY = 86_400_000;
+
+export interface StatsReport {
+  ledger: string;
+  windows: Array<{ name: string; totals: Totals }>;
+}
+
+export function buildReport(entries: LedgerEntry[], now: number, since?: number, ledger = ledgerPath()): StatsReport {
+  if (since !== undefined) return { ledger, windows: [{ name: "selected", totals: totals(entries, now - since) }] };
+  return {
+    ledger,
+    windows: [
+      { name: "last 24h", totals: totals(entries, now - DAY) },
+      { name: "last 7 days", totals: totals(entries, now - 7 * DAY) },
+      { name: "all time", totals: totals(entries) },
+    ],
+  };
+}
+
+export function renderReport(report: StatsReport, color: boolean): string {
+  const p = paint(color);
+  const lines: string[] = [p.magenta(p.bold("deja")) + p.dim("  — context your agent did not pay for twice"), ""];
+  const all = report.windows[report.windows.length - 1]!.totals;
+  if (all.requests === 0) {
+    lines.push("No requests recorded yet. Start with:  deja claude");
+    lines.push(p.dim(`ledger: ${report.ledger}`));
+    return lines.join("\n");
+  }
+  for (const w of report.windows) {
+    const t = w.totals;
+    const frac = t.tokensBefore > 0 ? t.saved / t.tokensBefore : 0;
+    lines.push(
+      `${w.name.padEnd(12)} ${p.green(bar(frac, 20))} ${p.bold(formatTokens(t.saved).padStart(7))} tokens ` +
+        `${p.dim(`(${percent(t.saved, t.tokensBefore)} of tool output, ${t.requests} requests)`)}  ${p.yellow(`≈ ${usd(t.usd)}`)}`,
+    );
+  }
+  lines.push("");
+  lines.push(p.dim(`"tokens" counts input tokens not resent to the model; dollars assume prompt caching.`));
+  lines.push(p.dim(`ledger: ${report.ledger}`));
+  return lines.join("\n");
+}
+
+export function statsCommand(args: ParsedArgs): number {
+  const sinceFlag = flagString(args.flags, "since");
+  const since = sinceFlag ? parseDuration(sinceFlag) : undefined;
+  if (sinceFlag && since === undefined) {
+    process.stderr.write(`deja: could not parse --since ${sinceFlag} (try 12h, 7d, 2w)\n`);
+    return 2;
+  }
+  const path = ledgerPath();
+  const report = buildReport(readEntries(path), Date.now(), since, path);
+  if (args.flags.json === true) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } else {
+    process.stdout.write(`${renderReport(report, useColor(process.stdout) && args.flags.color !== false)}\n`);
+  }
+  return 0;
+}
