@@ -1,5 +1,13 @@
-import { createServer, request as httpRequest, type IncomingHttpHeaders, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { request as httpsRequest } from "node:https";
+import {
+  Agent as HttpAgent,
+  createServer,
+  request as httpRequest,
+  type IncomingHttpHeaders,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
+import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
 import { transformRequest, type TransformOptions, type TransformStats } from "../anthropic/transform.js";
 import { isMessagesRequest, type MessagesRequest } from "../anthropic/types.js";
 import { fromAnthropic, toAnthropic } from "../openai/adapter.js";
@@ -232,9 +240,12 @@ function decoded(stream: Readable, encoding: string | string[] | undefined): Rea
 export function createProxy(opts: ProxyOptions = {}): Server {
   const upstream = new URL(opts.upstream ?? DEFAULT_UPSTREAM);
   const send = upstream.protocol === "http:" ? httpRequest : httpsRequest;
+  // Reuse upstream connections: agents make many requests in a row, and a
+  // fresh TLS handshake for each would add latency to every turn.
+  const agent = upstream.protocol === "http:" ? new HttpAgent({ keepAlive: true }) : new HttpsAgent({ keepAlive: true });
   const basePath = upstream.pathname.replace(/\/$/, "");
 
-  return createServer(async (req, res) => {
+  const server = createServer(async (req, res) => {
     const path = req.url ?? "/";
     let body: Buffer;
     try {
@@ -266,6 +277,7 @@ export function createProxy(opts: ProxyOptions = {}): Server {
     const upstreamReq = send(
       {
         protocol: upstream.protocol,
+        agent,
         hostname: upstream.hostname,
         port: upstream.port || undefined,
         method: req.method,
@@ -302,4 +314,6 @@ export function createProxy(opts: ProxyOptions = {}): Server {
     if (hasBody) upstreamReq.end(rewritten.body);
     else upstreamReq.end();
   });
+  server.on("close", () => agent.destroy());
+  return server;
 }
