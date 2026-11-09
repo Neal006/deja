@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregate, dollars, dominantModel, renderAudit, renderShare } from "../src/audit/report.js";
+import { aggregate, dollars, dominantModel, renderAudit, renderProjects, renderShare } from "../src/audit/report.js";
 import type { Bill } from "../src/audit/billing.js";
 import type { SessionStat } from "../src/audit/simulate.js";
 
@@ -117,5 +117,25 @@ describe("renderShare", () => {
 
   it("explains itself without bills", () => {
     expect(renderShare(aggregate([session({ bills: undefined })], { env: {} }))).toContain("without --quick");
+  });
+});
+
+describe("projects", () => {
+  it("groups sessions by working directory, biggest first", () => {
+    const r = aggregate([session(), session(), session({ cwd: "/home/me/small", bills: { baseline: bill(10), deja: bill(5) } })], { env: {} });
+    expect(r.projects.map((p) => [p.project, p.sessions])).toEqual([
+      ["/home/me/app", 2],
+      ["/home/me/small", 1],
+    ]);
+  });
+
+  it("renders a table", () => {
+    const out = renderProjects(aggregate([session()], { env: {} }), false);
+    expect(out).toContain("by project");
+    expect(out).toMatch(/app\s+1 sessions\s+10 req\s+\$3\.00 →\s+\$2\.10\s+-30\.0%/);
+  });
+
+  it("explains an empty table", () => {
+    expect(renderProjects(aggregate([session({ bills: undefined })], { env: {} }), false)).toContain("without --quick");
   });
 });

@@ -24,6 +24,16 @@ export interface AuditReport {
   /** Tool outputs that cost the most in context, resends included. */
   heaviest: TargetStat[];
   topSessions: Array<{ path: string; cwd?: string; baseline: number; deja: number; requests: number }>;
+  /** Per working directory: sessions, requests and bills, biggest first. */
+  projects: ProjectRow[];
+}
+
+export interface ProjectRow {
+  project: string;
+  sessions: number;
+  requests: number;
+  baseline: number;
+  deja: number;
 }
 
 export interface AggregateOptions {
@@ -56,7 +66,9 @@ export function aggregate(sessions: SessionStat[], opts: AggregateOptions = {}):
     bills: {},
     heaviest: [],
     topSessions: [],
+    projects: [],
   };
+  const projects = new Map<string, ProjectRow>();
   const targets = new Map<string, TargetStat>();
   for (const s of sessions) {
     if (s.requests === 0) continue;
@@ -85,9 +97,17 @@ export function aggregate(sessions: SessionStat[], opts: AggregateOptions = {}):
     }
     if (s.bills?.baseline && s.bills.deja) {
       r.topSessions.push({ path: s.path, cwd: s.cwd, baseline: s.bills.baseline.cost, deja: s.bills.deja.cost, requests: s.requests });
+      const name = s.cwd ?? "(unknown)";
+      const row = projects.get(name) ?? { project: name, sessions: 0, requests: 0, baseline: 0, deja: 0 };
+      row.sessions++;
+      row.requests += s.requests;
+      row.baseline += s.bills.baseline.cost;
+      row.deja += s.bills.deja.cost;
+      projects.set(name, row);
     }
   }
   r.heaviest = [...targets.values()].filter((t) => t.sent > 0).sort((a, b) => b.sent - a.sent).slice(0, opts.top ?? 8);
+  r.projects = [...projects.values()].sort((a, b) => b.baseline - a.baseline);
   r.topSessions = r.topSessions.sort((a, b) => b.baseline - b.deja - (a.baseline - a.deja)).slice(0, 5);
   return r;
 }
@@ -194,6 +214,23 @@ function padDisplay(s: string, width: number): string {
  * A compact, content-free summary meant to be pasted into a post or README:
  * a box with the headline numbers and a shields.io badge.
  */
+/** A per-project table (shown with `deja audit --by-project`). */
+export function renderProjects(r: AuditReport, color: boolean, limit = 15): string {
+  const p = paint(color);
+  if (r.projects.length === 0) return p.dim("No replayed projects (run without --quick).");
+  const out = [p.bold("  by project") + p.dim("  (input bill as recorded → with deja)")];
+  for (const row of r.projects.slice(0, limit)) {
+    const name = basename(row.project).padEnd(28).slice(0, 28);
+    const cut = row.baseline > 0 ? signed(1 - row.deja / row.baseline) : "";
+    out.push(
+      `    ${name} ${String(row.sessions).padStart(3)} sessions ${String(row.requests).padStart(6)} req  ` +
+        `${usd(dollars(r, row.baseline)).padStart(8)} → ${p.green(usd(dollars(r, row.deja)).padStart(8))}  ${p.dim(cut)}`,
+    );
+  }
+  if (r.projects.length > limit) out.push(p.dim(`    … ${r.projects.length - limit} more`));
+  return out.join("\n");
+}
+
 export function renderShare(r: AuditReport): string {
   const base = r.bills.baseline;
   const deja = r.bills.deja;
