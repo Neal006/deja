@@ -1,5 +1,5 @@
 import { FILE_INPUT_TOOLS, longStringChars } from "../anthropic/tools.js";
-import type { ContentBlock, MessagesRequest, TextBlock, ToolResultBlock, ToolUseBlock } from "../anthropic/types.js";
+import type { ContentBlock, Message, MessagesRequest, TextBlock, ToolResultBlock, ToolUseBlock } from "../anthropic/types.js";
 import { estimateTokens } from "../core/tokens.js";
 
 /**
@@ -46,6 +46,14 @@ function blockText(b: ContentBlock): string {
       // Thinking from earlier turns is dropped by the API; images are opaque.
       return "";
   }
+}
+
+/** Estimated tokens of one message as the model would see it. */
+export function messageTokens(msg: Message): number {
+  if (typeof msg.content === "string") return estimateTokens(msg.content);
+  let n = 0;
+  for (const b of msg.content) n += estimateTokens(blockText(b));
+  return n;
 }
 
 export function takeInventory(body: MessagesRequest): Inventory {
