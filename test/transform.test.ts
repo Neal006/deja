@@ -150,6 +150,22 @@ describe("transformRequest", () => {
     expect(r.toolTokensByMessage[1]).toBe(0);
   });
 
+  it("reports each result to onResult", () => {
+    const file = numbered(code(60));
+    const body = new Conversation()
+      .tool("Read", { file_path: "/repo/a.ts" }, file)
+      .tool("Read", { file_path: "/repo/a.ts" }, file)
+      .build();
+    const seen: Array<{ target: string; saved: number; messageIndex: number }> = [];
+    transformRequest(body, {
+      onResult: (i) => seen.push({ target: i.target, saved: i.tokensBefore - i.tokensAfter, messageIndex: i.messageIndex }),
+    });
+    expect(seen.map((s) => s.target)).toEqual(["Read a.ts", "Read a.ts"]);
+    expect(seen[0]!.saved).toBe(0);
+    expect(seen[1]!.saved).toBeGreaterThan(0);
+    expect(seen[1]!.messageIndex).toBe(3);
+  });
+
   it("passes string-content messages through", () => {
     const body = new Conversation().user("hello").build();
     expect(transformRequest(body).body.messages[0]).toBe(body.messages[0]);

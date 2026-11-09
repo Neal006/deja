@@ -35,6 +35,18 @@ export interface TransformOptions {
   compress?: CompressOptions;
   /** Tool names never to compress, e.g. tools returning secrets or binary-ish data. */
   skipTools?: string[];
+  /** Observe every tool result as it is processed (used by `deja audit`). */
+  onResult?: (info: ResultInfo) => void;
+}
+
+export interface ResultInfo {
+  /** Tool name, e.g. `Read`. */
+  tool: string;
+  /** Label without the repeat ordinal, e.g. `Read src/a.ts`. */
+  target: string;
+  messageIndex: number;
+  tokensBefore: number;
+  tokensAfter: number;
 }
 
 function systemText(system: MessagesRequest["system"]): string {
@@ -80,10 +92,20 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
       const result = block as ToolResultBlock;
       const use = uses.get(result.tool_use_id);
       const name = use?.name ?? "tool";
-      const label = labels.next(toolLabel(name, use?.input, cwd));
+      const target = toolLabel(name, use?.input, cwd);
+      const label = labels.next(target);
       stats.toolResults++;
       const compressible = !result.is_error && !skip.has(name);
+      const before = stats.tokensBefore;
+      const after = stats.tokensAfter;
       const next = rewriteResult(result, label, dict, opts, compressible, stats);
+      options.onResult?.({
+        tool: name,
+        target,
+        messageIndex: idx,
+        tokensBefore: stats.tokensBefore - before,
+        tokensAfter: stats.tokensAfter - after,
+      });
       if (next !== result) msgChanged = true;
       return next;
     });
