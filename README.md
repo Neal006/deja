@@ -20,6 +20,8 @@ On 48 real Claude Code sessions (2,779 API requests), replayed request by reques
 | eager pruning (what context pruners do) | −14.1% | 52.6k |
 | **deja** | **−30.4%** | **57.2k** |
 
+It also means fewer forgetful moments. In this history, Claude Code auto-compacted its context 9 times, each time with about **137k tokens** in context. With deja, the same moments would have held about **77k**, so compaction (and the detail it throws away) comes much later.
+
 ([Full benchmarks and methodology](docs/benchmarks.md).)
 
 <p align="center"><img src="docs/audit.svg" alt="deja audit output: input bill cut by 30%, eager pruning only 14%" width="760"></p>
