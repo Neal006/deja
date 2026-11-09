@@ -1,5 +1,5 @@
 import { claudeProjectsDir, discoverTranscripts } from "../../audit/discover.js";
-import { aggregate, renderAudit } from "../../audit/report.js";
+import { aggregate, renderAudit, renderShare } from "../../audit/report.js";
 import { STRATEGIES, type Strategy } from "../../audit/replay.js";
 import { simulateMany } from "../../audit/pool.js";
 import { DEFAULT_DECAY } from "../../decay/policy.js";
@@ -37,7 +37,9 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
   if (progress) process.stderr.write("\r\x1b[2K");
 
   const report = aggregate(sessions, { model: flagString(args.flags, "model"), top: flagNumber(args.flags, "top") });
-  if (args.flags.json === true) {
+  if (args.flags.share === true) {
+    process.stdout.write(`${renderShare(report)}\n`);
+  } else if (args.flags.json === true) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
     process.stdout.write(`${renderAudit(report, color)}\n`);
