@@ -30,6 +30,7 @@ Options
   --min-age <n>      requests before output counts as stale (default 5)
   --min-saving <n>   smallest eviction worth making, in tokens (default 150)
   --uncached         the upstream has no prompt cache: evict stale output eagerly
+  --skip-tools a,b   never dedup or stub these tools' output
   --quick            audit: skip the strategy replay
   --share            audit: print a content-free summary card and badge
   --quiet            do not log one line per request (start)
@@ -41,5 +42,6 @@ Environment
   DEJA_MIN_AGE       same as --min-age
   DEJA_MIN_SAVING    same as --min-saving
   DEJA_UNCACHED=1    same as --uncached
+  DEJA_SKIP_TOOLS    same as --skip-tools
   NO_COLOR           disable colors
 `;

@@ -4,7 +4,7 @@ import { flagString, type ParsedArgs } from "../args.js";
 import { paint, usd, useColor } from "../format.js";
 import { launchArgs } from "../spawn.js";
 import { resolveOpenAIUpstream, resolveUpstream } from "../upstream.js";
-import { decayConfigFromArgs, startProxy } from "./start.js";
+import { decayConfigFromArgs, skipToolsFromArgs, startProxy } from "./start.js";
 
 /**
  * Run an agent with deja in front of it: start a proxy on a free port, launch
@@ -20,6 +20,7 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
     enabled: args.flags.off !== true,
     decay: args.flags.decay !== false,
     decayConfig: decayConfigFromArgs(args),
+    skipTools: skipToolsFromArgs(args),
   });
 
   const env: NodeJS.ProcessEnv = { ...process.env, DEJA_ACTIVE: "1" };

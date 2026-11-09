@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildReport, dailySaved, renderReport } from "../src/cli/commands/stats.js";
-import { eventLine } from "../src/cli/commands/start.js";
+import { eventLine, skipToolsFromArgs } from "../src/cli/commands/start.js";
+import { parseArgs } from "../src/cli/args.js";
 import { summaryLine } from "../src/cli/commands/wrap.js";
 import type { LedgerEntry } from "../src/core/ledger.js";
 
@@ -91,4 +92,16 @@ describe("summaryLine", () => {
   it("handles no traffic", () => expect(summaryLine({ requests: 0, saved: 0, usd: 0 }, false)).toContain("no API requests"));
   it("handles nothing saved", () => expect(summaryLine({ requests: 4, saved: 0, usd: 0 }, false)).toContain("nothing repeated"));
   it("reports savings", () => expect(summaryLine({ requests: 4, saved: 12_345, usd: 0.5 }, false)).toContain("12.3k input tokens"));
+});
+
+describe("skipToolsFromArgs", () => {
+  it("reads the flag", () => {
+    expect(skipToolsFromArgs(parseArgs(["--skip-tools", "Read, mcp__db__query"]), {})).toEqual(["Read", "mcp__db__query"]);
+  });
+  it("falls back to the environment", () => {
+    expect(skipToolsFromArgs(parseArgs([]), { DEJA_SKIP_TOOLS: "Grep" })).toEqual(["Grep"]);
+  });
+  it("defaults to nothing", () => {
+    expect(skipToolsFromArgs(parseArgs([]), {})).toEqual([]);
+  });
 });

@@ -30,6 +30,8 @@ export function startProxy(opts: {
   /** Cache-aware eviction of stale context (default on). */
   decay?: boolean;
   decayConfig?: DecayConfig;
+  /** Tools never to dedup or stub. */
+  skipTools?: string[];
   ledger?: string;
   onEvent?: (e: ProxyEvent) => void;
 }): Promise<StartedProxy> {
@@ -39,6 +41,7 @@ export function startProxy(opts: {
   const server = createProxy({
     upstream: opts.upstream,
     enabled: opts.enabled,
+    transform: opts.skipTools?.length ? { skipTools: opts.skipTools } : undefined,
     decay:
       opts.decay === false
         ? undefined
@@ -87,7 +90,17 @@ export function decayConfigFromArgs(args: ParsedArgs): DecayConfig {
     minAge: flagNumber(args.flags, "min-age") ?? env.minAge,
     minSaving: flagNumber(args.flags, "min-saving") ?? env.minSaving,
     uncached: args.flags.uncached === true ? true : env.uncached,
+    skipTools: skipToolsFromArgs(args),
   };
+}
+
+/** `--skip-tools a,b` or DEJA_SKIP_TOOLS=a,b. */
+export function skipToolsFromArgs(args: ParsedArgs, env: NodeJS.ProcessEnv = process.env): string[] {
+  const raw = flagString(args.flags, "skip-tools") ?? env.DEJA_SKIP_TOOLS ?? "";
+  return raw
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
 }
 
 export async function startCommand(args: ParsedArgs): Promise<number> {
@@ -102,6 +115,7 @@ export async function startCommand(args: ParsedArgs): Promise<number> {
     enabled: args.flags.off !== true,
     decay: args.flags.decay !== false,
     decayConfig: decayConfigFromArgs(args),
+    skipTools: skipToolsFromArgs(args),
     onEvent: quiet ? undefined : (e) => process.stderr.write(`${eventLine(e, color)}\n`),
   });
   process.stderr.write(
