@@ -51,3 +51,21 @@ export function recorder(path = ledgerPath()): { onRequest: (e: ProxyEvent) => v
     },
   };
 }
+
+/**
+ * One line of the optional event log (`deja start --log`): what deja did to
+ * a request, without any of its content.
+ */
+export function eventRecord(event: ProxyEvent, now = Date.now()): Record<string, unknown> {
+  return {
+    t: now,
+    path: event.path,
+    model: event.model,
+    status: event.status,
+    ms: Math.round(event.ms * 10) / 10,
+    ...event.stats,
+    decay: event.decay,
+    usage: event.usage,
+    estimatedPrompt: event.estimatedPrompt,
+  };
+}

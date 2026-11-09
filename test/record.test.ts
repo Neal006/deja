@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readEntries } from "../src/core/ledger.js";
-import { recorder, toEntry } from "../src/proxy/record.js";
+import { eventRecord, recorder, toEntry } from "../src/proxy/record.js";
 import type { ProxyEvent } from "../src/proxy/server.js";
 
 const event: ProxyEvent = {
@@ -48,5 +48,13 @@ describe("recorder", () => {
     expect(r.tally.saved).toBe(12_000);
     expect(r.tally.fresh).toBe(2_000);
     expect(readEntries(path)).toHaveLength(2);
+  });
+});
+
+describe("eventRecord", () => {
+  it("carries counts and metadata but no content", () => {
+    const r = eventRecord({ ...event, ms: 1.234, status: 200, decay: { reason: "rent", newlyEvicted: 1, evicted: 2 } }, 7);
+    expect(r).toMatchObject({ t: 7, path: "/v1/messages", status: 200, ms: 1.2, compressed: 2, decay: { reason: "rent" } });
+    expect(JSON.stringify(r)).not.toMatch(/content|text/);
   });
 });
