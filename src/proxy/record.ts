@@ -6,7 +6,7 @@ import type { ProxyEvent } from "./server.js";
 export function toEntry(event: ProxyEvent, now = Date.now()): LedgerEntry {
   const s = event.stats;
   const saved = s.tokensBefore - s.tokensAfter;
-  return {
+  const entry: LedgerEntry = {
     t: now,
     model: event.model,
     toolResults: s.toolResults,
@@ -16,6 +16,13 @@ export function toEntry(event: ProxyEvent, now = Date.now()): LedgerEntry {
     freshSaved: s.freshSaved,
     usd: dollarsSaved(event.model, s.freshSaved, saved),
   };
+  if (event.usage) {
+    entry.in = event.usage.input;
+    entry.cr = event.usage.cacheRead;
+    entry.cw = event.usage.cacheWrite;
+    entry.out = event.usage.output;
+  }
+  return entry;
 }
 
 export interface SessionTally {

@@ -24,6 +24,16 @@ describe("toEntry", () => {
   });
 });
 
+describe("toEntry with usage", () => {
+  it("stores provider usage compactly", () => {
+    const e = toEntry({ ...event, usage: { input: 1, cacheRead: 2, cacheWrite: 3, output: 4 } }, 1);
+    expect([e.in, e.cr, e.cw, e.out]).toEqual([1, 2, 3, 4]);
+  });
+  it("omits usage fields when unknown", () => {
+    expect("in" in toEntry(event, 1)).toBe(false);
+  });
+});
+
 describe("recorder", () => {
   it("tallies and persists", () => {
     const path = join(mkdtempSync(join(tmpdir(), "deja-")), "ledger.jsonl");
