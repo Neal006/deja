@@ -21,6 +21,8 @@ Options
                      or https://api.anthropic.com)
   --off              forward requests untouched (A/B comparisons)
   --no-decay         dedup only: never stub stale tool output
+  --min-age <n>      audit: requests before output counts as stale (default 5)
+  --quick            audit: skip the strategy replay
   --quiet            do not log one line per request (start)
 
 Environment
