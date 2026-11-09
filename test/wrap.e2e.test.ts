@@ -133,3 +133,13 @@ describe("deja start (end to end)", () => {
     expect(stderr).toMatch(/deja saved .* input tokens across 1 requests/);
   }, 30_000);
 });
+
+describe("deja --help", () => {
+  it("prints help instead of running a subcommand", async () => {
+    const { stdout } = await run(process.execPath, [join(ROOT, "dist/cli.js"), "audit", "--help"]);
+    expect(stdout).toContain("Usage");
+    expect(stdout).not.toContain("replaying");
+    const short = await run(process.execPath, [join(ROOT, "dist/cli.js"), "-h"]);
+    expect(short.stdout).toContain("Usage");
+  });
+});
