@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { formatTokens } from "../../core/tokens.js";
 import { flagString, type ParsedArgs } from "../args.js";
 import { paint, usd, useColor } from "../format.js";
-import { resolveUpstream } from "../upstream.js";
+import { resolveOpenAIUpstream, resolveUpstream } from "../upstream.js";
 import { decayConfigFromArgs, startProxy } from "./start.js";
 
 /**
@@ -11,7 +11,8 @@ import { decayConfigFromArgs, startProxy } from "./start.js";
  * was saved when the agent exits.
  */
 export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedArgs): Promise<number> {
-  const upstream = resolveUpstream(flagString(args.flags, "upstream"));
+  const openai = args.flags.openai === true;
+  const upstream = openai ? resolveOpenAIUpstream(flagString(args.flags, "upstream")) : resolveUpstream(flagString(args.flags, "upstream"));
   const proxy = await startProxy({
     port: 0,
     upstream,
@@ -20,11 +21,14 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
     decayConfig: decayConfigFromArgs(args),
   });
 
-  const env = {
-    ...process.env,
-    ANTHROPIC_BASE_URL: proxy.url,
-    DEJA_ACTIVE: "1",
-  };
+  const env: NodeJS.ProcessEnv = { ...process.env, DEJA_ACTIVE: "1" };
+  if (openai) {
+    // Different agents read different variable names.
+    env.OPENAI_BASE_URL = `${proxy.url}/v1`;
+    env.OPENAI_API_BASE = `${proxy.url}/v1`;
+  } else {
+    env.ANTHROPIC_BASE_URL = proxy.url;
+  }
 
   const code = await new Promise<number>((resolve) => {
     const child = spawn(cmd, cmdArgs, { stdio: "inherit", env });
