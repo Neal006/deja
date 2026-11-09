@@ -135,6 +135,21 @@ describe("transformRequest", () => {
     expect(text).toContain("✗ test/unit/new.test.ts > breaks");
   });
 
+  it("reports savings per message", () => {
+    const file = numbered(code(60));
+    const body = new Conversation()
+      .user("go")
+      .tool("Read", { file_path: "/repo/a.ts" }, file)
+      .tool("Read", { file_path: "/repo/a.ts" }, file)
+      .build();
+    const r = transformRequest(body);
+    expect(r.savedByMessage).toHaveLength(5);
+    expect(r.savedByMessage.slice(0, 4)).toEqual([0, 0, 0, 0]);
+    expect(r.savedByMessage[4]).toBe(r.stats.tokensBefore - r.stats.tokensAfter);
+    expect(r.toolTokensByMessage[2]).toBeGreaterThan(0);
+    expect(r.toolTokensByMessage[1]).toBe(0);
+  });
+
   it("passes string-content messages through", () => {
     const body = new Conversation().user("hello").build();
     expect(transformRequest(body).body.messages[0]).toBe(body.messages[0]);

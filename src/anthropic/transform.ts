@@ -25,6 +25,10 @@ export interface TransformResult {
   body: MessagesRequest;
   changed: boolean;
   stats: TransformStats;
+  /** Estimated tokens saved in each message, aligned with `body.messages`. */
+  savedByMessage: number[];
+  /** Estimated original tool-result tokens in each message. */
+  toolTokensByMessage: number[];
 }
 
 export interface TransformOptions {
@@ -58,9 +62,12 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
   let changed = false;
 
   const last = body.messages.length - 1;
+  const savedByMessage: number[] = new Array(body.messages.length).fill(0);
+  const toolTokensByMessage: number[] = new Array(body.messages.length).fill(0);
   const messages = body.messages.map((msg, idx): Message => {
     if (typeof msg.content === "string") return msg;
     const savedBefore = stats.tokensBefore - stats.tokensAfter;
+    const toolBefore = stats.tokensBefore;
     let msgChanged = false;
     const content = msg.content.map((block): ContentBlock => {
       if (block.type === "tool_use") {
@@ -80,13 +87,15 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
       if (next !== result) msgChanged = true;
       return next;
     });
-    if (idx === last) stats.freshSaved = stats.tokensBefore - stats.tokensAfter - savedBefore;
+    savedByMessage[idx] = stats.tokensBefore - stats.tokensAfter - savedBefore;
+    toolTokensByMessage[idx] = stats.tokensBefore - toolBefore;
+    if (idx === last) stats.freshSaved = savedByMessage[idx]!;
     if (!msgChanged) return msg;
     changed = true;
     return { ...msg, content };
   });
 
-  return { body: changed ? { ...body, messages } : body, changed, stats };
+  return { body: changed ? { ...body, messages } : body, changed, stats, savedByMessage, toolTokensByMessage };
 }
 
 function indexWrite(use: ToolUseBlock, dict: Dictionary, labels: LabelRegistry, cwd: string | undefined): void {
