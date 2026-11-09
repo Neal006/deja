@@ -1,4 +1,4 @@
-import { transformRequest } from "../anthropic/transform.js";
+import { IncrementalTransformer } from "../anthropic/incremental.js";
 import type { Message, MessagesRequest } from "../anthropic/types.js";
 import { messageTokens, takeInventory } from "../decay/inventory.js";
 import { decide, DEFAULT_DECAY, freshState, type DecayConfig } from "../decay/policy.js";
@@ -32,6 +32,7 @@ export function replaySegment(seg: Segment, strategy: Strategy, opts: ReplayOpti
   const biller = new CacheBiller(opts.billing ?? DEFAULT_BILLING);
   const decay = opts.decay ?? DEFAULT_DECAY;
   const state = freshState();
+  const engine = new IncrementalTransformer();
   // Transforms are prefix-deterministic: while the eviction set is unchanged,
   // every message already sent is re-sent byte for byte. So hashes and token
   // counts computed for earlier requests stay valid and only new messages
@@ -64,7 +65,7 @@ export function replaySegment(seg: Segment, strategy: Strategy, opts: ReplayOpti
       evict = decide(body, state, time ?? 0, decay).evict;
     }
     const opt = strategy === "eager" ? { evict, compress: NO_COMPRESS } : { evict };
-    sent = transformRequest(body, opt).body.messages;
+    sent = engine.transform(body, opt).body.messages;
     const key = evict ? [...evict].sort().join(",") : "";
     if (key !== evictKey) {
       evictKey = key;
