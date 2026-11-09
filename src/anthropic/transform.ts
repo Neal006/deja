@@ -2,7 +2,9 @@ import { compressText, DEFAULT_COMPRESS, type CompressOptions } from "../core/co
 import { Dictionary, literalSource } from "../core/dictionary.js";
 import { findCwd, LabelRegistry, toolLabel } from "../core/labels.js";
 import { isNumbered, splitLines } from "../core/lines.js";
-import { WRITE_CONTENT_KEYS, WRITE_TOOLS } from "./tools.js";
+import { estimateTokens } from "../core/tokens.js";
+import { inputStub, resultStub } from "../decay/stub.js";
+import { FILE_INPUT_TOOLS, mapLongStrings, WRITE_CONTENT_KEYS, WRITE_TOOLS } from "./tools.js";
 import type { ContentBlock, Message, MessagesRequest, TextBlock, ToolResultBlock, ToolUseBlock } from "./types.js";
 
 export interface TransformStats {
@@ -16,6 +18,10 @@ export interface TransformStats {
    * savings in earlier messages would mostly have been cheap cache reads.
    */
   freshSaved: number;
+  /** Tool results replaced by decay stubs. */
+  evictedResults: number;
+  /** Write/edit inputs whose bodies were replaced by decay stubs. */
+  evictedInputs: number;
 }
 
 export interface TransformResult {
@@ -34,6 +40,12 @@ export interface TransformOptions {
   skipTools?: string[];
   /** Observe every tool result as it is processed (used by `deja audit`). */
   onResult?: (info: ResultInfo) => void;
+  /**
+   * tool_use ids whose content has gone stale and should be replaced by a
+   * stub: the tool result, and for write/edit tools also the input body.
+   * Chosen by the decay policy; empty means dedup only.
+   */
+  evict?: ReadonlySet<string>;
 }
 
 export interface ResultInfo {
@@ -67,7 +79,16 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
   const dict = new Dictionary();
   const labels = new LabelRegistry();
   const uses = new Map<string, ToolUseBlock>();
-  const stats: TransformStats = { toolResults: 0, compressed: 0, tokensBefore: 0, tokensAfter: 0, freshSaved: 0 };
+  const stats: TransformStats = {
+    toolResults: 0,
+    compressed: 0,
+    tokensBefore: 0,
+    tokensAfter: 0,
+    freshSaved: 0,
+    evictedResults: 0,
+    evictedInputs: 0,
+  };
+  const evict = options.evict ?? new Set<string>();
   let changed = false;
 
   const last = body.messages.length - 1;
@@ -82,6 +103,11 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
       if (block.type === "tool_use") {
         const use = block as ToolUseBlock;
         uses.set(use.id, use);
+        if (evict.has(use.id) && FILE_INPUT_TOOLS.has(use.name)) {
+          const stubbed = evictInput(use, labels, cwd, stats);
+          if (stubbed !== use) msgChanged = true;
+          return stubbed;
+        }
         indexWrite(use, dict, labels, cwd);
         return block;
       }
@@ -95,7 +121,9 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
       const compressible = !result.is_error && !skip.has(name);
       const before = stats.tokensBefore;
       const after = stats.tokensAfter;
-      const next = rewriteResult(result, label, dict, opts, compressible, stats);
+      const next = evict.has(result.tool_use_id)
+        ? evictResult(result, label, stats)
+        : rewriteResult(result, label, dict, opts, compressible, stats);
       options.onResult?.({
         tool: name,
         target,
@@ -115,6 +143,45 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
   });
 
   return { body: changed ? { ...body, messages } : body, changed, stats, savedByMessage, toolTokensByMessage };
+}
+
+function resultText(result: ToolResultBlock): string {
+  const c = result.content;
+  if (typeof c === "string") return c;
+  if (!Array.isArray(c)) return "";
+  return c.map((b) => (b.type === "text" && typeof (b as TextBlock).text === "string" ? (b as TextBlock).text : "")).join("\n");
+}
+
+/** Replace a stale tool result with a stub. Stubs are never indexed. */
+function evictResult(result: ToolResultBlock, label: string, stats: TransformStats): ToolResultBlock {
+  const text = resultText(result);
+  const stub = resultStub(label, text);
+  const before = estimateTokens(text);
+  const after = estimateTokens(stub);
+  if (after >= before) return result;
+  stats.tokensBefore += before;
+  stats.tokensAfter += after;
+  stats.evictedResults++;
+  return { ...result, content: stub };
+}
+
+/** Replace the long strings of a stale write/edit input with stubs. */
+function evictInput(use: ToolUseBlock, labels: LabelRegistry, cwd: string | undefined, stats: TransformStats): ToolUseBlock {
+  // Consume a label slot so later labels match the non-evicted numbering.
+  const label = WRITE_TOOLS.has(use.name) ? labels.next(toolLabel(use.name, use.input, cwd)) : toolLabel(use.name, use.input, cwd);
+  let before = 0;
+  let after = 0;
+  const input = mapLongStrings(use.input ?? {}, (s) => {
+    const stub = inputStub(label, s);
+    before += estimateTokens(s);
+    after += estimateTokens(stub);
+    return stub;
+  }) as Record<string, unknown>;
+  if (before === 0) return use;
+  stats.tokensBefore += before;
+  stats.tokensAfter += after;
+  stats.evictedInputs++;
+  return { ...use, input };
 }
 
 function indexWrite(use: ToolUseBlock, dict: Dictionary, labels: LabelRegistry, cwd: string | undefined): void {
