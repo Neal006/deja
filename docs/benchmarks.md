@@ -24,6 +24,10 @@ Reading the table:
 - **Dedup alone is small** (0.5%) on Claude Code, which already avoids many verbatim re-reads. Its value is that it's free: it never edits old messages, so it never costs a cache rewrite.
 - Eager pruning can shrink the average prompt *more* than deja and still cost more money. Prompt size isn't the bill; cache behaviour is.
 
+## How often stubbed output was needed again
+
+The replay can't show how the model would have reacted to stubs, but it can show how often the agent went back to the same thing anyway. Of the 711 outputs deja would have stubbed, the agent later called the same target again (same file, same command) for **177 (24.9%)**. Those calls happened in the recorded history *without* deja, mostly re-running tests or re-reading a file after editing it, so stubbing those outputs costs nothing extra. The live proxy tracks the same number (`deja stats`, "later re-run"), where it's an upper bound on re-fetches caused by stubs.
+
 ## Without a prompt cache
 
 Local models and many OpenAI-compatible endpoints don't cache prompts, so every token of every request is billed (or computed) in full. `deja audit --uncached` replays the same history under that model:
