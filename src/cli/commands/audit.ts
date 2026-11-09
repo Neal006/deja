@@ -1,13 +1,12 @@
 import { claudeProjectsDir, discoverTranscripts } from "../../audit/discover.js";
 import { aggregate, renderAudit } from "../../audit/report.js";
 import { STRATEGIES, type Strategy } from "../../audit/replay.js";
-import { simulate, type SessionStat } from "../../audit/simulate.js";
+import { simulateMany } from "../../audit/pool.js";
 import { DEFAULT_DECAY } from "../../decay/policy.js";
-import { readTranscript } from "../../audit/transcript.js";
 import { flagNumber, flagString, parseDuration, type ParsedArgs } from "../args.js";
 import { useColor } from "../format.js";
 
-export function auditCommand(args: ParsedArgs): number {
+export async function auditCommand(args: ParsedArgs): Promise<number> {
   const sinceFlag = flagString(args.flags, "since") ?? "30d";
   const since = parseDuration(sinceFlag);
   if (since === undefined) {
@@ -26,15 +25,15 @@ export function auditCommand(args: ParsedArgs): number {
   const strategies: readonly Strategy[] = args.flags.quick === true ? [] : STRATEGIES;
   const minAge = flagNumber(args.flags, "min-age");
   const decay = minAge !== undefined ? { ...DEFAULT_DECAY, minAge } : DEFAULT_DECAY;
-  const sessions: SessionStat[] = [];
-  files.forEach((f, i) => {
-    if (progress) process.stderr.write(`\r\x1b[2Kreplaying ${i + 1}/${files.length}…`);
-    try {
-      sessions.push(simulate(readTranscript(f.path), { strategies, decay }));
-    } catch {
-      // One unreadable transcript should not sink the whole audit.
-    }
-  });
+  const sessions = await simulateMany(
+    files.map((f) => f.path),
+    {
+      strategies,
+      decay,
+      jobs: flagNumber(args.flags, "jobs"),
+      onProgress: progress ? (done, total) => process.stderr.write(`\r\x1b[2Kreplaying ${done}/${total}…`) : undefined,
+    },
+  );
   if (progress) process.stderr.write("\r\x1b[2K");
 
   const report = aggregate(sessions, { model: flagString(args.flags, "model"), top: flagNumber(args.flags, "top") });
