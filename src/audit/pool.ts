@@ -6,13 +6,13 @@ import type { DecayConfig } from "../decay/policy.js";
 import type { BillingConfig } from "./billing.js";
 import type { Strategy } from "./replay.js";
 import { simulate, type SessionStat } from "./simulate.js";
-import { readTranscript } from "./transcript.js";
-import type { Job } from "./worker.js";
+import { readAny, type Job, type TranscriptFormat } from "./worker.js";
 
 export interface PoolOptions {
   strategies: readonly Strategy[];
   decay?: DecayConfig;
   billing?: BillingConfig;
+  format?: TranscriptFormat;
   /** Worker threads to use; 1 runs in-process. Defaults to CPUs - 1. */
   jobs?: number;
   onProgress?: (done: number, total: number) => void;
@@ -28,7 +28,7 @@ function serial(paths: string[], opts: PoolOptions): SessionStat[] {
   const out: SessionStat[] = [];
   paths.forEach((path, i) => {
     try {
-      out.push(simulate(readTranscript(path), { strategies: opts.strategies, decay: opts.decay, billing: opts.billing }));
+      out.push(simulate(readAny(path, opts.format), { strategies: opts.strategies, decay: opts.decay, billing: opts.billing }));
     } catch {
       // One unreadable transcript should not sink the whole audit.
     }
@@ -59,7 +59,7 @@ export async function simulateMany(paths: string[], opts: PoolOptions): Promise<
             return;
           }
           const id = next++;
-          const job: Job = { id, path: paths[id]!, strategies: opts.strategies, decay: opts.decay, billing: opts.billing };
+          const job: Job = { id, path: paths[id]!, strategies: opts.strategies, decay: opts.decay, billing: opts.billing, format: opts.format };
           w.postMessage(job);
         };
         w.on("message", (msg: { id: number; stat?: SessionStat }) => {
