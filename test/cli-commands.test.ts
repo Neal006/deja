@@ -39,15 +39,27 @@ describe("renderReport", () => {
 
 describe("eventLine", () => {
   const base = { path: "/v1/messages", model: "m", ms: 1.23 };
+  const z = { evictedResults: 0, evictedInputs: 0 };
   it("is quiet when nothing was saved", () => {
-    expect(eventLine({ ...base, stats: { toolResults: 3, compressed: 0, tokensBefore: 10, tokensAfter: 10, freshSaved: 0 } }, false)).toContain(
-      "nothing seen before",
+    expect(eventLine({ ...base, stats: { ...z, toolResults: 3, compressed: 0, tokensBefore: 10, tokensAfter: 10, freshSaved: 0 } }, false)).toContain(
+      "nothing to trim",
     );
   });
   it("reports savings", () => {
-    const line = eventLine({ ...base, stats: { toolResults: 3, compressed: 2, tokensBefore: 3000, tokensAfter: 1000, freshSaved: 500 } }, false);
+    const line = eventLine({ ...base, stats: { ...z, toolResults: 3, compressed: 2, tokensBefore: 3000, tokensAfter: 1000, freshSaved: 500 } }, false);
     expect(line).toContain("2.00k tokens not resent");
-    expect(line).toContain("2/3 results deduped");
+    expect(line).toContain("2 deduped, 0 stubbed");
+  });
+  it("mentions decay evictions", () => {
+    const line = eventLine(
+      {
+        ...base,
+        stats: { ...z, evictedResults: 2, toolResults: 3, compressed: 0, tokensBefore: 3000, tokensAfter: 1000, freshSaved: 0 },
+        decay: { reason: "idle", newlyEvicted: 2, evicted: 2 },
+      },
+      false,
+    );
+    expect(line).toContain("decayed 2 stale (idle)");
   });
 });
 

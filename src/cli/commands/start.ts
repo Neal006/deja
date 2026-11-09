@@ -1,6 +1,9 @@
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { join } from "node:path";
+import { dejaHome } from "../../core/ledger.js";
 import { formatTokens } from "../../core/tokens.js";
+import { StateStore } from "../../decay/store.js";
 import { recorder } from "../../proxy/record.js";
 import { createProxy, type ProxyEvent } from "../../proxy/server.js";
 import { flagNumber, flagString, type ParsedArgs } from "../args.js";
@@ -22,6 +25,8 @@ export function startProxy(opts: {
   port: number;
   upstream: string;
   enabled?: boolean;
+  /** Cache-aware eviction of stale context (default on). */
+  decay?: boolean;
   ledger?: string;
   onEvent?: (e: ProxyEvent) => void;
 }): Promise<StartedProxy> {
@@ -29,6 +34,7 @@ export function startProxy(opts: {
   const server = createProxy({
     upstream: opts.upstream,
     enabled: opts.enabled,
+    decay: opts.decay === false ? undefined : { store: new StateStore(join(dejaHome(), "decay-state.json")) },
     onRequest: (e) => {
       rec.onRequest(e);
       opts.onEvent?.(e);
@@ -47,10 +53,15 @@ export function eventLine(e: ProxyEvent, color: boolean): string {
   const p = paint(color);
   const saved = e.stats.tokensBefore - e.stats.tokensAfter;
   const model = e.model ?? "?";
-  if (saved <= 0) return p.dim(`· ${model}  ${e.stats.toolResults} tool results, nothing seen before`);
+  const decay = e.decay && e.decay.newlyEvicted > 0 ? p.cyan(` ⌫ decayed ${e.decay.newlyEvicted} stale (${e.decay.reason})`) : "";
+  if (saved <= 0) return p.dim(`· ${model}  ${e.stats.toolResults} tool results, nothing to trim`) + decay;
   return (
     `${p.green("✓")} ${model}  ${p.bold(formatTokens(saved))} tokens not resent ` +
-    p.dim(`(${e.stats.compressed}/${e.stats.toolResults} results deduped, +${formatTokens(e.stats.freshSaved)} new, ${e.ms.toFixed(1)}ms)`)
+    p.dim(
+      `(${e.stats.compressed} deduped, ${e.stats.evictedResults + e.stats.evictedInputs} stubbed, ` +
+        `+${formatTokens(e.stats.freshSaved)} new, ${e.ms.toFixed(1)}ms)`,
+    ) +
+    decay
   );
 }
 
@@ -64,6 +75,7 @@ export async function startCommand(args: ParsedArgs): Promise<number> {
     port,
     upstream,
     enabled: args.flags.off !== true,
+    decay: args.flags.decay !== false,
     onEvent: quiet ? undefined : (e) => process.stderr.write(`${eventLine(e, color)}\n`),
   });
   process.stderr.write(
