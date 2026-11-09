@@ -65,21 +65,16 @@ function systemText(system: MessagesRequest["system"]): string {
 }
 
 /**
- * Rewrite tool results in a Messages API request so that content already
- * visible earlier in the conversation is replaced with short references.
+ * The rewrite engine, one message at a time.
  *
- * The rewrite of message `k` depends only on messages `0..k`. Earlier
- * messages are therefore rewritten identically on every request, which keeps
- * the provider's prompt cache prefix stable.
+ * Holds everything the rewrite of later messages depends on (the dictionary
+ * of visible lines, label numbering, tool calls seen so far). Pushing the
+ * messages of a conversation in order yields the same output as
+ * `transformRequest`; keeping an engine alive lets a caller process only
+ * the messages a new request adds.
  */
-export function transformRequest(body: MessagesRequest, options: TransformOptions = {}): TransformResult {
-  const opts = options.compress ?? DEFAULT_COMPRESS;
-  const skip = new Set(options.skipTools ?? []);
-  const cwd = findCwd(systemText(body.system));
-  const dict = new Dictionary();
-  const labels = new LabelRegistry();
-  const uses = new Map<string, ToolUseBlock>();
-  const stats: TransformStats = {
+export class TransformEngine {
+  readonly stats: TransformStats = {
     toolResults: 0,
     compressed: 0,
     tokensBefore: 0,
@@ -88,43 +83,77 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
     evictedResults: 0,
     evictedInputs: 0,
   };
-  const evict = options.evict ?? new Set<string>();
-  let changed = false;
+  readonly savedByMessage: number[] = [];
+  readonly toolTokensByMessage: number[] = [];
+  /** Rewritten messages so far, aligned with the pushed messages. */
+  readonly output: Message[] = [];
+  /** Whether any pushed message was rewritten. */
+  changed = false;
 
-  const last = body.messages.length - 1;
-  const savedByMessage: number[] = new Array(body.messages.length).fill(0);
-  const toolTokensByMessage: number[] = new Array(body.messages.length).fill(0);
-  const messages = body.messages.map((msg, idx): Message => {
-    if (typeof msg.content === "string") return msg;
+  private readonly opts: CompressOptions;
+  private readonly skip: Set<string>;
+  private readonly cwd: string | undefined;
+  private readonly evict: ReadonlySet<string>;
+  private readonly dict = new Dictionary();
+  private readonly labels = new LabelRegistry();
+  private readonly uses = new Map<string, ToolUseBlock>();
+
+  constructor(
+    system: MessagesRequest["system"],
+    private readonly options: TransformOptions = {},
+  ) {
+    this.opts = options.compress ?? DEFAULT_COMPRESS;
+    this.skip = new Set(options.skipTools ?? []);
+    this.cwd = findCwd(systemText(system));
+    this.evict = options.evict ?? new Set<string>();
+  }
+
+  /** Rewrite the next message of the conversation. */
+  push(msg: Message): Message {
+    const idx = this.output.length;
+    const out = this.rewrite(msg, idx);
+    this.output.push(out);
+    if (out !== msg) this.changed = true;
+    this.stats.freshSaved = this.savedByMessage[idx] ?? 0;
+    return out;
+  }
+
+  private rewrite(msg: Message, idx: number): Message {
+    const stats = this.stats;
+    if (typeof msg.content === "string") {
+      this.savedByMessage.push(0);
+      this.toolTokensByMessage.push(0);
+      return msg;
+    }
     const savedBefore = stats.tokensBefore - stats.tokensAfter;
     const toolBefore = stats.tokensBefore;
     let msgChanged = false;
     const content = msg.content.map((block): ContentBlock => {
       if (block.type === "tool_use") {
         const use = block as ToolUseBlock;
-        uses.set(use.id, use);
-        if (evict.has(use.id) && FILE_INPUT_TOOLS.has(use.name)) {
-          const stubbed = evictInput(use, labels, cwd, stats);
+        this.uses.set(use.id, use);
+        if (this.evict.has(use.id) && FILE_INPUT_TOOLS.has(use.name)) {
+          const stubbed = evictInput(use, this.labels, this.cwd, stats);
           if (stubbed !== use) msgChanged = true;
           return stubbed;
         }
-        indexWrite(use, dict, labels, cwd);
+        indexWrite(use, this.dict, this.labels, this.cwd);
         return block;
       }
       if (block.type !== "tool_result") return block;
       const result = block as ToolResultBlock;
-      const use = uses.get(result.tool_use_id);
+      const use = this.uses.get(result.tool_use_id);
       const name = use?.name ?? "tool";
-      const target = toolLabel(name, use?.input, cwd);
-      const label = labels.next(target);
+      const target = toolLabel(name, use?.input, this.cwd);
+      const label = this.labels.next(target);
       stats.toolResults++;
-      const compressible = !result.is_error && !skip.has(name);
+      const compressible = !result.is_error && !this.skip.has(name);
       const before = stats.tokensBefore;
       const after = stats.tokensAfter;
-      const next = evict.has(result.tool_use_id)
+      const next = this.evict.has(result.tool_use_id)
         ? evictResult(result, label, name, stats)
-        : rewriteResult(result, label, dict, opts, compressible, stats);
-      options.onResult?.({
+        : rewriteResult(result, label, this.dict, this.opts, compressible, stats);
+      this.options.onResult?.({
         tool: name,
         target,
         messageIndex: idx,
@@ -134,15 +163,35 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
       if (next !== result) msgChanged = true;
       return next;
     });
-    savedByMessage[idx] = stats.tokensBefore - stats.tokensAfter - savedBefore;
-    toolTokensByMessage[idx] = stats.tokensBefore - toolBefore;
-    if (idx === last) stats.freshSaved = savedByMessage[idx]!;
-    if (!msgChanged) return msg;
-    changed = true;
-    return { ...msg, content };
-  });
+    this.savedByMessage.push(stats.tokensBefore - stats.tokensAfter - savedBefore);
+    this.toolTokensByMessage.push(stats.tokensBefore - toolBefore);
+    return msgChanged ? { ...msg, content } : msg;
+  }
 
-  return { body: changed ? { ...body, messages } : body, changed, stats, savedByMessage, toolTokensByMessage };
+  /** A TransformResult for `body`, whose messages must all have been pushed. */
+  result(body: MessagesRequest): TransformResult {
+    return {
+      body: this.changed ? { ...body, messages: [...this.output] } : body,
+      changed: this.changed,
+      stats: { ...this.stats },
+      savedByMessage: [...this.savedByMessage],
+      toolTokensByMessage: [...this.toolTokensByMessage],
+    };
+  }
+}
+
+/**
+ * Rewrite tool results in a Messages API request so that content already
+ * visible earlier in the conversation is replaced with short references.
+ *
+ * The rewrite of message `k` depends only on messages `0..k`. Earlier
+ * messages are therefore rewritten identically on every request, which keeps
+ * the provider's prompt cache prefix stable.
+ */
+export function transformRequest(body: MessagesRequest, options: TransformOptions = {}): TransformResult {
+  const engine = new TransformEngine(body.system, options);
+  for (const msg of body.messages) engine.push(msg);
+  return engine.result(body);
 }
 
 function resultText(result: ToolResultBlock): string {
