@@ -200,6 +200,17 @@ Yes. See [docs/ci.md](docs/ci.md) for headless runs and GitHub Actions.
 **Something looks off.**
 See [docs/troubleshooting.md](docs/troubleshooting.md), and run `deja doctor`.
 
+## Status and roadmap
+
+deja is new (0.1). The engines are fuzz-tested, the cost model is checked against the hindsight optimum, and the proxy has been verified live against the Anthropic API. The audit numbers come from one developer's history, though, so run `npx dejactx audit` on yours and [share the summary](https://github.com/Neal006/deja/issues/new?template=savings_report.md).
+
+Next up:
+
+- `deja audit` for other agents' transcripts (Codex, Cline, OpenCode)
+- per-tool stub formats (`git diff`, package managers, test runners)
+- a calibrated token estimator, using the provider counts deja already records
+- an npm release
+
 ## Development
 
 ```bash
