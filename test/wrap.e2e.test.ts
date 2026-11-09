@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readEntries } from "../src/core/ledger.js";
 import { code, Conversation, numbered } from "./helpers/conversation.js";
+import { writeTranscript } from "./helpers/transcripts.js";
 
 const run = promisify(execFile);
 const ROOT = join(import.meta.dirname, "..");
@@ -62,4 +63,17 @@ describe("deja run (end to end)", () => {
       }),
     ).rejects.toMatchObject({ code: 7 });
   }, 30_000);
+});
+
+describe("deja audit (end to end)", () => {
+  it("replays transcripts in worker threads and reports JSON", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "deja-audit-e2e-"));
+    for (const n of ["s1", "s2", "s3"]) writeTranscript(dir, n);
+    const { stdout } = await run("node", [join(ROOT, "dist/cli.js"), "audit", "--dir", dir, "--since", "1000w", "--jobs", "2", "--json"], {
+      env: { ...process.env, NO_COLOR: "1" },
+    });
+    const report = JSON.parse(stdout) as { sessions: number; bills: { baseline: { cost: number }; deja: { cost: number } } };
+    expect(report.sessions).toBe(3);
+    expect(report.bills.deja.cost).toBeLessThan(report.bills.baseline.cost);
+  }, 60_000);
 });
