@@ -173,7 +173,9 @@ describe("subagents", () => {
   it("counts subagent sessions in the header", () => {
     const r = aggregate([session(), session({ subagent: true })], { env: {} });
     expect(r.subagents).toBe(1);
-    expect(renderAudit(r, false)).toContain("2 Claude Code sessions (1 of them subagents)");
+    expect(renderAudit(r, false)).toContain("2 Claude Code sessions (1 of them a subagent)");
+    const two = aggregate([session(), session({ subagent: true }), session({ subagent: true })], { env: {} });
+    expect(renderAudit(two, false)).toContain("(2 of them subagents)");
   });
 });
 

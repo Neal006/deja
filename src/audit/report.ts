@@ -159,7 +159,7 @@ function signed(fraction: number): string {
 export function renderAudit(r: AuditReport, color: boolean): string {
   const p = paint(color);
   const out: string[] = [];
-  const sub = r.subagents > 0 ? ` (${r.subagents} of them subagents)` : "";
+  const sub = r.subagents === 1 ? " (1 of them a subagent)" : r.subagents > 1 ? ` (${r.subagents} of them subagents)` : "";
   out.push(
     `${p.magenta(p.bold("deja audit"))} ${p.dim(`— ${r.sessions} Claude Code sessions${sub}, ${r.requests.toLocaleString("en-US")} API requests, ${day(r.start)} → ${day(r.end)}`)}`,
   );
