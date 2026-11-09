@@ -1,6 +1,7 @@
 import { ledgerPath, readEntries, resetLedger, totals, type LedgerEntry, type Totals } from "../../core/ledger.js";
 import { formatTokens } from "../../core/tokens.js";
 import { flagString, parseDuration, type ParsedArgs } from "../args.js";
+import { MIN_CALIBRATION_REQUESTS } from "../../core/calibration.js";
 import { bar, paint, percent, sparkline, usd, useColor } from "../format.js";
 
 const DAY = 86_400_000;
@@ -109,6 +110,9 @@ export function renderReport(report: StatsReport, color: boolean): string {
     if (all.estimated > 0 && prompt > 0) {
       const ratio = all.estimated / prompt;
       lines.push(p.dim(`  deja's token estimates run at ${ratio.toFixed(2)}× the provider's count on your traffic`));
+      if (all.measured >= MIN_CALIBRATION_REQUESTS) {
+        lines.push(p.dim(`  deja audit scales its dollar figures by ×${(prompt / all.estimated).toFixed(2)} to match`));
+      }
     }
   }
   lines.push("");
