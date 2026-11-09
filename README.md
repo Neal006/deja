@@ -61,7 +61,7 @@ The key property is that **the rewrite of message *k* is a pure function of mess
 | 2 | 2 | 0 | 28,034 | 13,906 |
 | 3 | 4 | 2 | **41,940** | **533** |
 
-Request 3 read the *entire* previous prompt from cache (28,034 + 13,906 = 41,940). The only new tokens written were the two re-reads, which came through as references. The model answered correctly from the first reads.
+Request 3 read the *entire* previous prompt from cache (28,034 + 13,906 = 41,940). The only new tokens written were the two re-reads, which came through as references. The model answered correctly from the first reads. ([Full verification log](docs/verification.md), including a live eviction test.)
 
 ### 2. Decay: cache-aware eviction (ski rental)
 
