@@ -92,6 +92,7 @@ const NO_COMPRESS = {
   minInputLines: Number.MAX_SAFE_INTEGER,
   minSavedTokens: Number.MAX_SAFE_INTEGER,
   minSavedRatio: 1,
+  maxInputChars: 0,
 };
 
 export type StrategyBills = Record<Strategy, Bill>;

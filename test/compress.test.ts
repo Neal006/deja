@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compressText } from "../src/core/compress.js";
+import { compressText, DEFAULT_COMPRESS } from "../src/core/compress.js";
 import { Dictionary } from "../src/core/dictionary.js";
 
 function numbered(body: string[], start = 1): string {
@@ -85,6 +85,16 @@ describe("compressText", () => {
     const r = compressText("c", "Read q.ts", text, d);
     expect(r.text).toContain("all of Read q.ts");
     expect(d.sources[1]!.lines).toHaveLength(0);
+  });
+
+  it("passes oversized text through untouched and unindexed", () => {
+    const d = new Dictionary();
+    const text = numbered(code(80));
+    seed(d, "a", "Read big.ts", text);
+    const r = compressText("b", "Read big.ts", text, d, { ...DEFAULT_COMPRESS, maxInputChars: 100 });
+    expect(r.changed).toBe(false);
+    expect(r.text).toBe(text);
+    expect(r.source.lines).toEqual([]);
   });
 
   it("preserves a trailing newline", () => {

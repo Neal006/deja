@@ -11,6 +11,11 @@ export interface CompressOptions extends MatchOptions {
   minSavedTokens: number;
   /** Minimum relative saving (0-1) to apply compression. */
   minSavedRatio: number;
+  /**
+   * Larger texts pass through uncompressed. Bounds the work per request so
+   * one giant log cannot slow every later turn down.
+   */
+  maxInputChars: number;
 }
 
 export const DEFAULT_COMPRESS: CompressOptions = {
@@ -18,6 +23,7 @@ export const DEFAULT_COMPRESS: CompressOptions = {
   minInputLines: 12,
   minSavedTokens: 100,
   minSavedRatio: 0.2,
+  maxInputChars: 2_000_000,
 };
 
 export interface CompressResult {
@@ -44,9 +50,13 @@ export function compressText(
   dict: Dictionary,
   opts: CompressOptions = DEFAULT_COMPRESS,
 ): CompressResult {
+  const tokensBefore = estimateTokens(text);
+  if (text.length > (opts.maxInputChars ?? DEFAULT_COMPRESS.maxInputChars)) {
+    // Too big to scan on every request; keep it verbatim and unindexed.
+    return { text, changed: false, tokensBefore, tokensAfter: tokensBefore, source: { id, label, numbered: false, lines: [] } };
+  }
   const lines = splitLines(text);
   const numbered = isNumbered(lines);
-  const tokensBefore = estimateTokens(text);
   const unchanged = (): CompressResult => ({
     text,
     changed: false,
