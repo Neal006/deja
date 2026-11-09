@@ -107,3 +107,12 @@ Each replayed request is billed by hashing every message and comparing it with t
 - The system prompt is modelled as a constant 20k tokens.
 - A stub is lossy by design. The model can recover the content by re-running the tool, which costs a tool call. `minAge` controls how cautious decay is.
 - Thinking blocks from earlier turns are ignored, matching how the API bills them.
+
+## Ideas measured and rejected
+
+Each of these was implemented or prototyped, measured on real sessions, and dropped:
+
+- **Eager pruning** (stub anything old enough, every request): saves less than deja at short thresholds and costs *more* than doing nothing at long ones (+26% at 20 requests), because every prune invalidates the cached suffix.
+- **An incremental engine in the proxy** (keep per-conversation state, process only new messages): steady-state latency went from 83 ms to 105 ms on a 562-message session. Verifying the prefix of a freshly parsed request costs more than the transform it saves, and Claude Code moves its `cache_control` markers every request, so the prefix rarely matches byte-for-byte anyway. The incremental engine is kept for `deja audit` replays, where it cuts runtime by about 30%.
+- **Ignoring timings when matching lines** (so `(12ms)` and `(14ms)` count as the same line in test re-runs): only 0.29% more repeated tokens on the benchmark history, not worth weakening the "identical" guarantee of references.
+- **A longer, more explicit dedup header**: the shorter header saves more and reads just as clearly.
