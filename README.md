@@ -53,6 +53,16 @@ Each new tool result is compressed against everything already visible in the con
 
 The key property is that **the rewrite of message *k* is a pure function of messages 0..k.** Earlier messages come out byte-identical on every request, so the provider's prompt cache keeps hitting. Line-number gutters are matched separately from content, so an insertion that shifts every later line still matches.
 
+**Verified on the live API.** Here's Claude Code 2.1 through deja, reading two files and then re-reading both. These are the usage numbers Anthropic returned:
+
+| request | tool results | deduped by deja | cache read | cache write |
+|---|---|---|---|---|
+| 1 | 0 | 0 | 11,217 | 16,817 |
+| 2 | 2 | 0 | 28,034 | 13,906 |
+| 3 | 4 | 2 | **41,940** | **533** |
+
+Request 3 read the *entire* previous prompt from cache (28,034 + 13,906 = 41,940). The only new tokens written were the two re-reads, which came through as references. The model answered correctly from the first reads.
+
 ### 2. Decay: cache-aware eviction (ski rental)
 
 Stale tool output, and the bodies of files the agent wrote long ago, can be replaced with small stubs that say how to get the content back ("run the tool again", "read the file"). The real question is *when* to do it:
