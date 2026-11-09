@@ -8,6 +8,8 @@ replaces anything the model has already seen with a short reference, without
 ever touching earlier messages, so prompt caching keeps working.
 
 Usage
+  deja audit [--since 30d]         replay your Claude Code history: what did
+                                   repeats cost you? (nothing is sent anywhere)
   deja claude [claude args...]     run Claude Code through deja
   deja run -- <cmd> [args...]      run any Anthropic-API agent through deja
   deja start [--port 8787]         run the proxy in the foreground
