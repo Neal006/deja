@@ -2,6 +2,7 @@
 
 | doc | read it for |
 |---|---|
+| [api.md](api.md) | using deja as a library: `dejaFetch`, `createProxy`, the engines, measurement |
 | [design.md](design.md) | how dedup and decay work, the cost model, the ski-rental rule, rejected ideas |
 | [benchmarks.md](benchmarks.md) | measured results on real sessions and how they were produced |
 | [verification.md](verification.md) | live API runs proving cache behaviour |
