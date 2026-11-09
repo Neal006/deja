@@ -35,6 +35,22 @@ At request 4, both `cat` outputs were replaced with stubs. The API accepted the 
 
 Request 4 also shows **why the default mode is ski rental and not eager.** The eviction forced 10.8k tokens to be re-cached, so on a short session like this one it doesn't pay off. With default settings (no `--uncached`), deja made no evictions at all on the same task, which is the cheaper choice. Evicting only becomes worthwhile over longer sessions or across idle gaps, and that's where `deja audit` finds the 20–30% savings.
 
+## 3. The shipped defaults on a longer session
+
+Task: read two source files, run some commands, re-read both files, then explain what two functions do. Default settings (dedup and ski-rental decay on).
+
+| request | tool results | deduped | cache read | cache write |
+|---|---|---|---|---|
+| 4 | 3 | 0 | 44,144 | 721 |
+| 5 | 4 | 1 | 44,865 | **167** |
+| 6 | 5 | 1 | 45,032 | 1,630 |
+| 7 | 6 | 2 | 46,662 | **163** |
+| 8 | 7 | 2 | 46,825 | 181 |
+
+Every request's cache read equals the previous request's read plus write *exactly* (44,865 + 167 = 45,032, 45,032 + 1,630 = 46,662, …), so the cache was never broken. The two re-reads cost 167 and 163 written tokens instead of about 1.8k each. The model's answer was correct, and it noted on its own that "the second reads returned a 'same as earlier' stub … so I relied on the first reads."
+
+The same run measured deja's token estimator against the provider: deja's estimate of the whole prompt was **0.71×** the provider's count. The estimator undercounts on this traffic, so deja's dollar figures are conservative. `deja stats` shows this ratio for your own traffic.
+
 ## Reproduce
 
 ```bash
