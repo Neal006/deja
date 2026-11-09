@@ -33,6 +33,7 @@ Options
   --skip-tools a,b   never dedup or stub these tools' output
   --quick            audit: skip the strategy replay
   --share            audit: print a content-free summary card and badge
+  --by-project       audit: add a per-project table
   --quiet            do not log one line per request (start)
 
 Environment
