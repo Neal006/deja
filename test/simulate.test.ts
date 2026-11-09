@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { simulate } from "../src/audit/simulate.js";
+import { isSubagentPath, simulate } from "../src/audit/simulate.js";
 import type { Transcript } from "../src/audit/transcript.js";
 import { code, Conversation, numbered } from "./helpers/conversation.js";
 
@@ -56,5 +56,13 @@ describe("simulate", () => {
     const s = simulate({ path: "/x", segments: [] });
     expect(s.requests).toBe(0);
     expect(s.saved).toBe(0);
+  });
+});
+
+describe("isSubagentPath", () => {
+  it("recognises subagent transcripts on any platform", () => {
+    expect(isSubagentPath("/home/me/.claude/projects/p/abc/subagents/agent-1.jsonl")).toBe(true);
+    expect(isSubagentPath("C:\\Users\\me\\.claude\\projects\\p\\abc\\subagents\\agent-1.jsonl")).toBe(true);
+    expect(isSubagentPath("/home/me/.claude/projects/p/abc.jsonl")).toBe(false);
   });
 });

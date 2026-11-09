@@ -31,6 +31,8 @@ export interface SessionStat {
   sessionId?: string;
   cwd?: string;
   model?: string;
+  /** A subagent's own transcript rather than a main session. */
+  subagent?: boolean;
   start?: number;
   end?: number;
   requests: number;
@@ -59,12 +61,18 @@ export interface SimulateOptions extends ReplayOptions {
   strategies?: readonly Strategy[];
 }
 
+/** Claude Code keeps subagent transcripts under `<session>/subagents/`. */
+export function isSubagentPath(path: string): boolean {
+  return /[\\/]subagents[\\/]/.test(path);
+}
+
 export function simulate(t: Transcript, opts: SimulateOptions = {}): SessionStat {
   const s: SessionStat = {
     path: t.path,
     sessionId: t.sessionId,
     cwd: t.cwd,
     model: t.model,
+    ...(isSubagentPath(t.path) ? { subagent: true } : {}),
     start: t.start,
     end: t.end,
     requests: 0,
