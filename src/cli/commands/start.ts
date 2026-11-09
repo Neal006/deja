@@ -11,6 +11,7 @@ import { eventRecord, recorder } from "../../proxy/record.js";
 import { createProxy, type ProxyEvent } from "../../proxy/server.js";
 import { flagNumber, flagString, type ParsedArgs } from "../args.js";
 import { paint, useColor } from "../format.js";
+import { summaryLine } from "./wrap.js";
 import { resolveUpstream } from "../upstream.js";
 
 export const DEFAULT_PORT = 8787;
@@ -84,6 +85,15 @@ export function eventLine(e: ProxyEvent, color: boolean): string {
   );
 }
 
+/** A helpful message when the proxy cannot listen. */
+export function listenError(port: number, err: NodeJS.ErrnoException): string {
+  if (err.code === "EADDRINUSE") {
+    return `deja: port ${port} is already in use (another deja?). Try --port 0 for a free port, or stop the other process.`;
+  }
+  if (err.code === "EACCES") return `deja: not allowed to listen on port ${port}. Try a port above 1024.`;
+  return `deja: could not listen on port ${port}: ${err.message}`;
+}
+
 /** Decay settings from flags, falling back to the environment. */
 export function decayConfigFromArgs(args: ParsedArgs): DecayConfig {
   const env = decayFromEnv();
@@ -112,7 +122,9 @@ export async function startCommand(args: ParsedArgs): Promise<number> {
   const upstream = resolveUpstream(flagString(args.flags, "upstream"));
   const quiet = args.flags.quiet === true;
   const logPath = flagString(args.flags, "log");
-  const proxy = await startProxy({
+  let proxy: StartedProxy;
+  try {
+    proxy = await startProxy({
     port,
     upstream,
     enabled: args.flags.off !== true,
@@ -129,13 +141,22 @@ export async function startCommand(args: ParsedArgs): Promise<number> {
         }
       }
     },
-  });
+    });
+  } catch (err) {
+    process.stderr.write(`${listenError(port, err as NodeJS.ErrnoException)}\n`);
+    return 1;
+  }
   process.stderr.write(
     `${p.magenta("deja")} listening on ${p.bold(proxy.url)} → ${upstream}\n` +
       p.dim(`point your agent at it:  export ANTHROPIC_BASE_URL=${proxy.url}\n`),
   );
   await new Promise<void>((resolve) => {
-    const stop = () => proxy.server.close(() => resolve());
+    const stop = () => {
+      process.stderr.write(`\n${summaryLine(proxy.tally, color)}\n`);
+      proxy.server.close(() => resolve());
+      // Idle client keep-alive connections must not hold shutdown up.
+      proxy.server.closeAllConnections?.();
+    };
     process.once("SIGINT", stop);
     process.once("SIGTERM", stop);
   });
