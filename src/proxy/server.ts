@@ -5,6 +5,9 @@ import { isMessagesRequest } from "../anthropic/types.js";
 import { takeInventory } from "../decay/inventory.js";
 import { decide, DEFAULT_DECAY, type DecayConfig, type DecayReason } from "../decay/policy.js";
 import type { StateStore } from "../decay/store.js";
+import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
+import type { Readable } from "node:stream";
+import { UsageSniffer, type Usage } from "./usage.js";
 
 export const DEFAULT_UPSTREAM = "https://api.anthropic.com";
 
@@ -16,6 +19,10 @@ export interface ProxyEvent {
   ms: number;
   /** What the decay policy did, when decay is enabled. */
   decay?: { reason: DecayReason; newlyEvicted: number; evicted: number };
+  /** Token usage reported by the provider for this request, when available. */
+  usage?: Usage;
+  /** HTTP status returned by the upstream. */
+  status?: number;
 }
 
 export interface DecayOptions {
@@ -138,6 +145,21 @@ function sendError(res: ServerResponse, status: number, message: string): void {
   res.end(body);
 }
 
+function decoded(stream: Readable, encoding: string | string[] | undefined): Readable {
+  const enc = Array.isArray(encoding) ? encoding[0] : encoding;
+  switch (enc?.trim().toLowerCase()) {
+    case "gzip":
+    case "x-gzip":
+      return stream.pipe(createGunzip());
+    case "br":
+      return stream.pipe(createBrotliDecompress());
+    case "deflate":
+      return stream.pipe(createInflate());
+    default:
+      return stream;
+  }
+}
+
 export function createProxy(opts: ProxyOptions = {}): Server {
   const upstream = new URL(opts.upstream ?? DEFAULT_UPSTREAM);
   const send = upstream.protocol === "http:" ? httpRequest : httpsRequest;
@@ -160,13 +182,16 @@ export function createProxy(opts: ProxyOptions = {}): Server {
       // Compression must never break a request: fall back to the original.
       rewritten = { body };
     }
-    if (rewritten.event) {
+    let reported = false;
+    const report = (extra: Partial<ProxyEvent> = {}) => {
+      if (reported || !rewritten.event) return;
+      reported = true;
       try {
-        opts.onRequest?.(rewritten.event);
+        opts.onRequest?.({ ...rewritten.event, ...extra });
       } catch {
         // Accounting failures are not the user's problem.
       }
-    }
+    };
 
     const hasBody = req.method !== "GET" && req.method !== "HEAD";
     const upstreamReq = send(
@@ -183,11 +208,25 @@ export function createProxy(opts: ProxyOptions = {}): Server {
         for (const [k, v] of Object.entries(upstreamRes.headers)) {
           if (v !== undefined && !HOP_BY_HOP.has(k)) headers[k] = v;
         }
-        res.writeHead(upstreamRes.statusCode ?? 502, headers);
+        const status = upstreamRes.statusCode ?? 502;
+        res.writeHead(status, headers);
         upstreamRes.pipe(res);
+        if (!rewritten.event) return;
+        // Watch a (decoded) copy of the response for usage; the client gets
+        // the original bytes untouched.
+        const sniffer = new UsageSniffer();
+        const copy = decoded(upstreamRes, upstreamRes.headers["content-encoding"]);
+        copy.setEncoding("utf8");
+        copy.on("data", (chunk: string) => sniffer.feed(chunk));
+        copy.on("error", () => report({ status }));
+        copy.on("end", () => report({ status, usage: sniffer.finish() }));
+        upstreamRes.on("aborted", () => report({ status }));
       },
     );
-    upstreamReq.on("error", (err) => sendError(res, 502, `upstream error: ${err.message}`));
+    upstreamReq.on("error", (err) => {
+      report();
+      sendError(res, 502, `upstream error: ${err.message}`);
+    });
     res.on("close", () => {
       if (!res.writableFinished) upstreamReq.destroy();
     });
