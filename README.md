@@ -150,7 +150,7 @@ npm run build     # tsc → dist/
 node dist/cli.js audit
 ```
 
-The interesting code:
+The design, with the cost model and the ski-rental analysis, is in [docs/design.md](docs/design.md). The interesting code:
 
 - `src/core/match.ts`: the LZ77-style line matcher
 - `src/anthropic/transform.ts`: the prefix-deterministic request rewrite
