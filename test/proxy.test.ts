@@ -240,6 +240,27 @@ describe("createProxy", () => {
     expect(events).toHaveLength(1);
   });
 
+  it("answers the health endpoint locally", async () => {
+    const captured: Captured = {};
+    const upstreamPort = await fakeUpstream(captured);
+    const port = await listen(createProxy({ upstream: `http://127.0.0.1:${upstreamPort}`, status: () => ({ requests: 3 }) }));
+    const res = await fetch(`http://127.0.0.1:${port}/deja/health`);
+    expect(await res.json()).toEqual({ ok: true, upstream: `http://127.0.0.1:${upstreamPort}/`, requests: 3 });
+    expect(captured.url).toBeUndefined();
+  });
+
+  it("keeps the health endpoint up when the status callback throws", async () => {
+    const port = await listen(
+      createProxy({
+        upstream: "http://127.0.0.1:1",
+        status: () => {
+          throw new Error("boom");
+        },
+      }),
+    );
+    expect(((await (await fetch(`http://127.0.0.1:${port}/deja/health`)).json()) as { ok: boolean }).ok).toBe(true);
+  });
+
   it("reuses upstream connections across requests", async () => {
     let connections = 0;
     const up = createServer((_req, res) => res.end("{}"));

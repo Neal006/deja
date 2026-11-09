@@ -59,7 +59,12 @@ export interface ProxyOptions {
   enabled?: boolean;
   /** Cache-aware eviction of stale context. Omit to run dedup only. */
   decay?: DecayOptions;
+  /** Extra fields for the local `GET /deja/health` endpoint. */
+  status?: () => Record<string, unknown>;
 }
+
+/** Local endpoint answered by deja itself, never forwarded. */
+export const HEALTH_PATH = "/deja/health";
 
 const HOP_BY_HOP = new Set([
   "connection",
@@ -247,6 +252,18 @@ export function createProxy(opts: ProxyOptions = {}): Server {
 
   const server = createServer(async (req, res) => {
     const path = req.url ?? "/";
+    if (req.method === "GET" && path.split("?")[0] === HEALTH_PATH) {
+      let extra: Record<string, unknown> = {};
+      try {
+        extra = opts.status?.() ?? {};
+      } catch {
+        // A broken status callback must not take the endpoint down.
+      }
+      const body = JSON.stringify({ ok: true, upstream: upstream.href, ...extra });
+      res.writeHead(200, { "content-type": "application/json", "content-length": Buffer.byteLength(body) });
+      res.end(body);
+      return;
+    }
     let body: Buffer;
     try {
       body = await readBody(req);
