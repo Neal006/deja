@@ -25,7 +25,15 @@ Every API request an agent makes resends the **entire** conversation. A 400-line
 
 Prompt caching makes those resends cheaper (0.1× price), but not free. They also fill the context window, which triggers lossy auto-compaction sooner.
 
-The obvious fix is to prune old tool output. **It backfires.** The prompt cache matches on an exact prefix, so editing an old message invalidates everything after it, and the whole tail is re-billed at 1.25×. Prune eagerly and you keep paying for cache rewrites. In the replay, eager pruning that waits 20 requests before pruning cost **30% more than doing nothing at all**.
+The obvious fix is to prune old tool output. **It backfires.** The prompt cache matches on an exact prefix, so editing an old message invalidates everything after it, and the whole tail is re-billed at 1.25×. Prune eagerly and you keep paying for cache rewrites. In the replay, eager pruning that waits 20 requests before pruning cost **26% more than doing nothing at all**:
+
+| output counts as stale after | eager pruning | deja |
+|---|---|---|
+| 5 requests | −19.1% | **−31.5%** |
+| 10 requests | ±0.0% | **−27.5%** |
+| 20 requests | **+26.3%** | **−22.4%** |
+
+(Reproduce with `npx dejactx audit --min-age 20`.)
 
 ## How deja works
 
