@@ -103,7 +103,7 @@ Each replayed request is billed by hashing every message and comparing it with t
 
 ## Known limitations
 
-- Token counts are estimates (a fast character-class heuristic), within roughly 10–15% of real tokenizers on code and logs.
+- Token counts are estimates from a fast character-class heuristic. On a live Claude Code prompt it came in at 0.71× the provider's count (see [verification.md](verification.md)), so absolute numbers run low and dollar figures are conservative. Strategy comparisons use the same estimator on both sides, so they hold.
 - The system prompt is modelled as a constant 20k tokens.
 - A stub is lossy by design. The model can recover the content by re-running the tool, which costs a tool call. `minAge` controls how cautious decay is.
 - Thinking blocks from earlier turns are ignored, matching how the API bills them.
