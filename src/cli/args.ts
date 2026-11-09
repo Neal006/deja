@@ -62,8 +62,9 @@ export function flagNumber(flags: ParsedArgs["flags"], name: string): number | u
   return Number.isFinite(n) ? n : undefined;
 }
 
-/** Parse durations like `30m`, `12h`, `7d`, `2w` into milliseconds. */
+/** Parse durations like `30m`, `12h`, `7d`, `2w` (or `all`) into milliseconds. */
 export function parseDuration(s: string): number | undefined {
+  if (s.trim().toLowerCase() === "all") return Number.POSITIVE_INFINITY;
   const m = /^(\d+(?:\.\d+)?)\s*([smhdw])$/.exec(s.trim());
   if (!m) return undefined;
   const unit = { s: 1e3, m: 6e4, h: 3.6e6, d: 8.64e7, w: 6.048e8 }[m[2] as "s" | "m" | "h" | "d" | "w"];

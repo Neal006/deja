@@ -8,7 +8,7 @@ replaces anything the model has already seen with a short reference, without
 ever touching earlier messages, so prompt caching keeps working.
 
 Usage
-  deja audit [--since 30d]         replay your Claude Code history: what did
+  deja audit [--since 30d|all]     replay your Claude Code history: what did
                                    repeats cost you? (nothing is sent anywhere)
   deja preview [session] [--request N] [--segment N]
                                    show exactly what deja would have sent

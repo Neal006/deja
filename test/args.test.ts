@@ -63,6 +63,11 @@ describe("parseDuration", () => {
     ["1.5h", 5_400_000],
   ])("%s", (s, ms) => expect(parseDuration(s)).toBe(ms));
 
+  it("accepts all", () => {
+    expect(parseDuration("all")).toBe(Number.POSITIVE_INFINITY);
+    expect(Date.now() - parseDuration("ALL")!).toBe(Number.NEGATIVE_INFINITY);
+  });
+
   it("rejects garbage", () => {
     expect(parseDuration("yesterday")).toBeUndefined();
     expect(parseDuration("5")).toBeUndefined();
