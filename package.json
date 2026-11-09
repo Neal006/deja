@@ -23,7 +23,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
     "prepublishOnly": "npm run build && npm test",
     "bench:quality": "npm run build && node scripts/quality-bench.mjs",
-    "docs:image": "npm run build && FORCE_COLOR=1 node dist/cli.js audit --since all | head -10 | node scripts/term-svg.mjs > docs/audit.svg"
+    "docs:image": "npm run build && FORCE_COLOR=1 node dist/cli.js audit --since all | head -10 | node scripts/term-svg.mjs > docs/audit.svg",
+    "prepare": "tsc -p tsconfig.json"
   },
   "keywords": [
     "claude-code",
