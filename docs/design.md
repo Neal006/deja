@@ -62,7 +62,9 @@ Decay replaces stale content with stubs:
       Tests  611 passed (611)
 ```
 
-Stub candidates are tool results and the long string arguments of write/edit tools (types are preserved, so the history still fits each tool's schema). An item becomes a candidate once it's been carried by `minAge` requests (default 5) and stubbing it saves at least `minSaving` tokens (default 150).
+Stub candidates are tool results and the long string arguments of write/edit tools (types are preserved, so the history still fits each tool's schema). Some output is never a candidate, because a stub's "run the tool again" would be wrong for it: answers the user gave (`AskUserQuestion`), reports from whole subagent runs (`Agent`/`Task`), and loaded instructions (`Skill`). Users can add tools with `--skip-tools`.
+
+An item becomes a candidate once it's been carried by `minAge` requests (default 5) and stubbing it saves at least `minSaving` tokens (default 150).
 
 ### When to evict: ski rental
 
