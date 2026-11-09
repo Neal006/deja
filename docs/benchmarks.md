@@ -4,7 +4,7 @@ All numbers come from `deja audit`, which replays recorded Claude Code sessions 
 
 ## Dataset
 
-48 Claude Code sessions (2,779 API requests) from one developer's machine, July–November 2026. The work was mixed: web apps, data pipelines, firmware docs, infra scripts, and this repository. The dominant model was Claude Opus.
+51 Claude Code sessions (2,922 API requests, one of them a subagent's) from one developer's machine, July–November 2026. The work was mixed: web apps, data pipelines, firmware docs, infra scripts, and this repository. The dominant model was Claude Opus.
 
 ## Results
 
@@ -12,21 +12,21 @@ Change in total input cost relative to the session as recorded (negative = cheap
 
 | stale after | eager pruning | deja dedup only | **deja** | avg prompt: recorded → deja |
 |---|---|---|---|---|
-| 3 requests | −22.9% | −0.5% | **−32.4%** | 88.8k → 55.3k |
-| 5 (default) | −14.1% | −0.5% | **−30.4%** | 88.8k → 57.2k |
-| 10 requests | **+3.1%** | −0.5% | **−26.4%** | 88.8k → 61.5k |
-| 20 requests | **+26.0%** | −0.5% | **−21.1%** | 88.8k → 67.4k |
+| 3 requests | −24.0% | −0.6% | **−32.4%** | 95.8k → 59.6k |
+| 5 (default) | −15.8% | −0.6% | **−30.7%** | 95.8k → 61.5k |
+| 10 requests | **+0.2%** | −0.6% | **−27.0%** | 95.8k → 65.5k |
+| 20 requests | **+21.6%** | −0.6% | **−21.9%** | 95.8k → 71.3k |
 
 Reading the table:
 
-- **Eager pruning gets *worse* the more conservative it is.** Waiting longer means each prune invalidates a bigger cached suffix. At 20 requests it costs 26% *more* than not pruning at all.
+- **Eager pruning gets *worse* the more conservative it is.** Waiting longer means each prune invalidates a bigger cached suffix. At 20 requests it costs 22% *more* than not pruning at all.
 - **deja is cheaper than recorded at every setting**, because it only evicts when the ski-rental rule says the cache rewrite has paid for itself (or when the cache has already expired).
-- **Dedup alone is small** (0.5%) on Claude Code, which already avoids many verbatim re-reads. Its value is that it's free: it never edits old messages, so it never costs a cache rewrite.
+- **Dedup alone is small** (0.6%) on Claude Code, which already avoids many verbatim re-reads. Its value is that it's free: it never edits old messages, so it never costs a cache rewrite.
 - Eager pruning can shrink the average prompt *more* than deja and still cost more money. Prompt size isn't the bill; cache behaviour is.
 
 ## How often stubbed output was needed again
 
-The replay can't show how the model would have reacted to stubs, but it can show how often the agent went back to the same thing anyway. Of the 711 outputs deja would have stubbed, the agent later called the same target again (same file, same command) for **177 (24.9%)**. Those calls happened in the recorded history *without* deja, mostly re-running tests or re-reading a file after editing it, so stubbing those outputs costs nothing extra. The live proxy tracks the same number (`deja stats`, "later re-run"), where it's an upper bound on re-fetches caused by stubs.
+The replay can't show how the model would have reacted to stubs, but it can show how often the agent went back to the same thing anyway. Of the 711 outputs deja would have stubbed, the agent later called the same target again (same file, same command) for **179 (25.2%)**. Those calls happened in the recorded history *without* deja, mostly re-running tests or re-reading a file after editing it, so stubbing those outputs costs nothing extra. The live proxy tracks the same number (`deja stats`, "later re-run"), where it's an upper bound on re-fetches caused by stubs.
 
 ## Without a prompt cache
 
@@ -34,9 +34,9 @@ Local models and many OpenAI-compatible endpoints don't cache prompts, so every 
 
 | strategy | input tokens | avg prompt |
 |---|---|---|
-| as recorded | — | 91.8k |
-| eager pruning | −40.9% | |
-| **deja `--uncached`** | **−41.5%** | **53.7k** |
+| as recorded | — | 95.8k |
+| eager pruning | −40.8% | |
+| **deja `--uncached`** | **−41.3%** | **56.3k** |
 
 With no cache there's no rewrite penalty, so evicting eagerly is right, and that's what `--uncached` does (plus dedup). The difference from the cached case is the point: the right eviction policy depends on the provider's cache, and deja picks it from one flag.
 
