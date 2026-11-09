@@ -1,5 +1,6 @@
 import { claudeProjectsDir, discoverTranscripts } from "../../audit/discover.js";
 import { aggregate, renderAudit } from "../../audit/report.js";
+import { STRATEGIES, type Strategy } from "../../audit/replay.js";
 import { simulate, type SessionStat } from "../../audit/simulate.js";
 import { readTranscript } from "../../audit/transcript.js";
 import { flagNumber, flagString, parseDuration, type ParsedArgs } from "../args.js";
@@ -21,11 +22,12 @@ export function auditCommand(args: ParsedArgs): number {
 
   const color = useColor(process.stdout) && args.flags.color !== false;
   const progress = process.stderr.isTTY && args.flags.json !== true;
+  const strategies: readonly Strategy[] = args.flags.quick === true ? [] : STRATEGIES;
   const sessions: SessionStat[] = [];
   files.forEach((f, i) => {
     if (progress) process.stderr.write(`\r\x1b[2Kreplaying ${i + 1}/${files.length}…`);
     try {
-      sessions.push(simulate(readTranscript(f.path)));
+      sessions.push(simulate(readTranscript(f.path), { strategies }));
     } catch {
       // One unreadable transcript should not sink the whole audit.
     }
