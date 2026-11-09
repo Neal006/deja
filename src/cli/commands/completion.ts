@@ -4,8 +4,8 @@ import type { ParsedArgs } from "../args.js";
 export const COMMANDS: Record<string, string[]> = {
   audit: ["--since", "--project", "--dir", "--limit", "--min-age", "--uncached", "--quick", "--share", "--by-project", "--tune", "--json", "--jobs", "--model", "--top", "--no-color"],
   preview: ["--request", "--segment", "--min-age", "--no-decay", "--json", "--no-color"],
-  claude: ["--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools"],
-  run: ["--openai", "--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools"],
+  claude: ["--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools", "--quiet"],
+  run: ["--openai", "--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools", "--quiet"],
   start: ["--port", "--upstream", "--off", "--no-decay", "--min-age", "--min-saving", "--uncached", "--skip-tools", "--quiet", "--log"],
   stats: ["--since", "--json", "--by-model", "--reset", "--no-color"],
   doctor: ["--upstream", "--offline"],

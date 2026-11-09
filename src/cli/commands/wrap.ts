@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { flagString, type ParsedArgs } from "../args.js";
-import { useColor } from "../format.js";
+import { paint, useColor } from "../format.js";
 import { summaryLine } from "../summary.js";
 import { launchArgs } from "../spawn.js";
 import { resolveOpenAIUpstream, resolveUpstream } from "../upstream.js";
@@ -23,6 +23,7 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
     skipTools: skipToolsFromArgs(args),
   });
 
+  if (args.flags.quiet !== true) process.stderr.write(`${startLine(proxy.url, upstream, args, useColor(process.stderr))}\n`);
   const env: NodeJS.ProcessEnv = { ...process.env, DEJA_ACTIVE: "1", DEJA_PORT: String(proxy.port) };
   if (openai) {
     // Different agents read different variable names.
@@ -48,6 +49,13 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
   await new Promise<void>((resolve) => proxy.server.close(() => resolve()));
   process.stderr.write(`${summaryLine(proxy.tally, useColor(process.stderr))}\n`);
   return code;
+}
+
+/** The line printed when a wrapped agent starts. */
+export function startLine(url: string, upstream: string, args: ParsedArgs, color: boolean): string {
+  const p = paint(color);
+  const mode = args.flags.off === true ? "off (pass-through)" : args.flags.decay === false ? "dedup only" : "dedup + decay";
+  return p.dim(`deja ⟲ ${mode} · ${url} → ${upstream}`);
 }
 
 /** A helpful message when the agent command cannot be started. */
