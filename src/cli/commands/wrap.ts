@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { formatTokens } from "../../core/tokens.js";
 import { flagString, type ParsedArgs } from "../args.js";
 import { paint, usd, useColor } from "../format.js";
+import { launchArgs } from "../spawn.js";
 import { resolveOpenAIUpstream, resolveUpstream } from "../upstream.js";
 import { decayConfigFromArgs, startProxy } from "./start.js";
 
@@ -31,8 +32,9 @@ export async function wrapCommand(cmd: string, cmdArgs: string[], args: ParsedAr
   }
 
   const code = await new Promise<number>((resolve) => {
-    // On Windows most agent CLIs are .cmd shims, which need a shell.
-    const child = spawn(cmd, cmdArgs, { stdio: "inherit", env, shell: process.platform === "win32" });
+    // On Windows most agent CLIs are .cmd shims, which need a quoted shell launch.
+    const launch = launchArgs(cmd, cmdArgs);
+    const child = spawn(launch.command, launch.args, { stdio: "inherit", env, shell: launch.shell });
     child.on("error", (err) => {
       process.stderr.write(`deja: could not start ${cmd}: ${err.message}\n`);
       resolve(127);
