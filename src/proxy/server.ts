@@ -5,7 +5,8 @@ import { isMessagesRequest, type MessagesRequest } from "../anthropic/types.js";
 import { fromAnthropic, toAnthropic } from "../openai/adapter.js";
 import { isResponsesRequest, responsesFromAnthropic, responsesToAnthropic } from "../openai/responses.js";
 import { isChatRequest } from "../openai/types.js";
-import { takeInventory } from "../decay/inventory.js";
+import { estimateTokens } from "../core/tokens.js";
+import { messageTokens, takeInventory } from "../decay/inventory.js";
 import { decide, DEFAULT_DECAY, type DecayConfig, type DecayReason } from "../decay/policy.js";
 import type { StateStore } from "../decay/store.js";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
@@ -24,6 +25,12 @@ export interface ProxyEvent {
   decay?: { reason: DecayReason; newlyEvicted: number; evicted: number };
   /** Token usage reported by the provider for this request, when available. */
   usage?: Usage;
+  /**
+   * deja's own estimate of the prompt tokens actually sent (system, tools
+   * and messages after rewriting). Compared with `usage` it measures how
+   * accurate the estimator is on real traffic.
+   */
+  estimatedPrompt?: number;
   /** HTTP status returned by the upstream. */
   status?: number;
 }
@@ -171,9 +178,21 @@ export function rewriteBody(
     stats: result.stats,
     ms: performance.now() - started,
     decay: decayInfo,
+    estimatedPrompt: estimatePrompt(result.body),
   };
   if (!result.changed) return { body, event };
   return { body: Buffer.from(JSON.stringify(out), "utf8"), event };
+}
+
+/** Estimated prompt tokens of a request: system, tool definitions, messages. */
+export function estimatePrompt(body: MessagesRequest): number {
+  let n = 0;
+  const system = body.system;
+  if (typeof system === "string") n += estimateTokens(system);
+  else if (Array.isArray(system)) for (const b of system) n += estimateTokens(String(b.text ?? ""));
+  if (Array.isArray(body.tools)) n += estimateTokens(JSON.stringify(body.tools));
+  for (const m of body.messages) n += messageTokens(m);
+  return n;
 }
 
 function sendError(res: ServerResponse, status: number, message: string): void {

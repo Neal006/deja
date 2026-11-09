@@ -3,7 +3,7 @@ import { gzipSync } from "node:zlib";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { StateStore } from "../src/decay/store.js";
-import { apiKind, createProxy, forwardHeaders, isCompressiblePath, rewriteBody, type ProxyEvent } from "../src/proxy/server.js";
+import { apiKind, createProxy, estimatePrompt, forwardHeaders, isCompressiblePath, rewriteBody, type ProxyEvent } from "../src/proxy/server.js";
 import { code, Conversation, numbered } from "./helpers/conversation.js";
 
 interface Captured {
@@ -148,6 +148,20 @@ describe("rewriteBody", () => {
     const r = rewriteBody("/v1/messages", {}, raw, {});
     expect(r.body).toBe(raw);
     expect(r.event).toBeDefined();
+  });
+});
+
+describe("estimatePrompt", () => {
+  it("counts system, tools and messages", () => {
+    const body = new Conversation("x".repeat(400)).user("y".repeat(400)).build();
+    const bare = estimatePrompt(body);
+    expect(bare).toBeGreaterThanOrEqual(200);
+    expect(estimatePrompt({ ...body, tools: [{ name: "Read", description: "z".repeat(400) }] })).toBeGreaterThan(bare + 90);
+  });
+
+  it("is attached to proxy events", () => {
+    const r = rewriteBody("/v1/messages", {}, Buffer.from(JSON.stringify(repeatedReads())), {});
+    expect(r.event?.estimatedPrompt).toBeGreaterThan(0);
   });
 });
 
