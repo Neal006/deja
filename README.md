@@ -107,10 +107,11 @@ npx dejactx stats
 
 ### Live savings in Claude Code's status line
 
-Install globally (`npm i -g dejactx`) and add this to `~/.claude/settings.json`:
+Install globally and let deja configure it:
 
-```json
-{ "statusLine": { "type": "command", "command": "deja statusline" } }
+```bash
+npm i -g dejactx
+deja setup statusline      # adds the statusLine entry to ~/.claude/settings.json (with a backup)
 ```
 
 Sessions started with `deja claude` then show something like `deja ↓45.6k tok · $0.42 · 3 stubbed` at the bottom of the screen.
