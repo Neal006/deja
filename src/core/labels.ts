@@ -12,8 +12,12 @@ function clip(s: string, max = MAX_ARG): string {
 
 export function relativize(path: string, cwd: string | undefined): string {
   if (!cwd) return path;
-  const base = cwd.endsWith("/") ? cwd : `${cwd}/`;
-  return path.startsWith(base) ? path.slice(base.length) : path;
+  // Accept either separator so Windows paths shorten too.
+  for (const sep of ["/", "\\"]) {
+    const base = cwd.endsWith(sep) ? cwd : `${cwd}${sep}`;
+    if (path.startsWith(base)) return path.slice(base.length);
+  }
+  return path;
 }
 
 function str(v: unknown): string | undefined {

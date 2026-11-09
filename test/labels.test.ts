@@ -31,6 +31,9 @@ describe("relativize", () => {
   it("handles a trailing slash on cwd", () => {
     expect(relativize("/repo/a", "/repo/")).toBe("a");
   });
+  it("handles Windows separators", () => {
+    expect(relativize("C:\\repo\\src\\a.ts", "C:\\repo")).toBe("src\\a.ts");
+  });
   it("does not strip sibling prefixes", () => {
     expect(relativize("/repository/a", "/repo")).toBe("/repository/a");
   });
