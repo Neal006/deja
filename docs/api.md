@@ -36,6 +36,8 @@ const server = createProxy({
 server.listen(8787, "127.0.0.1");
 ```
 
+The proxy also answers `GET /deja/health` locally (add fields with the `status` option), and forwards any request carrying the header `x-deja: off` untouched, stripping the header.
+
 `ProxyEvent` fields: `path`, `model`, `stats` (`toolResults`, `compressed`, `tokensBefore`, `tokensAfter`, `freshSaved`, `evictedResults`, `evictedInputs`, `rerunsOfStubbed`), `ms`, `decay` (`reason`, `newlyEvicted`, `evicted`), `usage` (provider-reported `input`, `cacheRead`, `cacheWrite`, `output`), `status`, `estimatedPrompt`.
 
 ## Engines
