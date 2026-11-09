@@ -118,6 +118,19 @@ For providers with no prompt cache at all (most local models), add `--uncached`:
 | `--min-age <n>` | requests before output counts as stale (default 5) |
 | `--upstream <url>` | forward somewhere else (defaults to `$ANTHROPIC_BASE_URL`, so deja can sit in front of a corporate gateway) |
 
+### Inside your own agent
+
+Building on the Anthropic or OpenAI SDK, or the Claude Agent SDK's underlying client? Use deja in-process instead of as a proxy:
+
+```ts
+import Anthropic from "@anthropic-ai/sdk";
+import { dejaFetch } from "dejactx";
+
+const client = new Anthropic({ fetch: dejaFetch() });
+```
+
+`dejaFetch` rewrites Messages, Chat Completions and Responses API calls exactly as the proxy does, and passes everything else through. The engines (`transformRequest`, `decide`, `CacheBiller`, …) are exported too.
+
 ## Safety
 
 - **Fails open.** If deja can't parse or transform a request, it forwards the original bytes.
