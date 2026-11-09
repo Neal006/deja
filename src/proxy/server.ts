@@ -2,6 +2,9 @@ import { createServer, request as httpRequest, type IncomingHttpHeaders, type In
 import { request as httpsRequest } from "node:https";
 import { transformRequest, type TransformOptions, type TransformStats } from "../anthropic/transform.js";
 import { isMessagesRequest } from "../anthropic/types.js";
+import { takeInventory } from "../decay/inventory.js";
+import { decide, DEFAULT_DECAY, type DecayConfig, type DecayReason } from "../decay/policy.js";
+import type { StateStore } from "../decay/store.js";
 
 export const DEFAULT_UPSTREAM = "https://api.anthropic.com";
 
@@ -11,6 +14,15 @@ export interface ProxyEvent {
   stats: TransformStats;
   /** Milliseconds spent transforming the request. */
   ms: number;
+  /** What the decay policy did, when decay is enabled. */
+  decay?: { reason: DecayReason; newlyEvicted: number; evicted: number };
+}
+
+export interface DecayOptions {
+  store: StateStore;
+  config?: DecayConfig;
+  /** Injected clock, for tests. */
+  now?: () => number;
 }
 
 export interface ProxyOptions {
@@ -20,6 +32,8 @@ export interface ProxyOptions {
   onRequest?: (event: ProxyEvent) => void;
   /** When false, requests are forwarded untouched (useful for A/B checks). */
   enabled?: boolean;
+  /** Cache-aware eviction of stale context. Omit to run dedup only. */
+  decay?: DecayOptions;
 }
 
 const HOP_BY_HOP = new Set([
@@ -80,12 +94,35 @@ export function rewriteBody(
   }
   if (!isMessagesRequest(parsed)) return { body };
   const started = performance.now();
-  const result = transformRequest(parsed, opts.transform);
+  let evict: Set<string> | undefined;
+  let decayInfo: ProxyEvent["decay"];
+  if (opts.decay) {
+    const key = takeInventory(parsed).key;
+    if (key) {
+      const isCount = path.split("?")[0]!.endsWith("/count_tokens");
+      if (isCount) {
+        // Token counting must reflect what we would send, but is not a turn.
+        evict = new Set(opts.decay.store.peek(key)?.evicted ?? []);
+      } else {
+        const state = opts.decay.store.get(key);
+        const d = decide(parsed, state, (opts.decay.now ?? Date.now)(), opts.decay.config ?? DEFAULT_DECAY);
+        evict = d.evict;
+        decayInfo = { reason: d.reason, newlyEvicted: d.newlyEvicted.length, evicted: d.evict.size };
+        try {
+          opts.decay.store.save();
+        } catch {
+          // Losing persistence costs a cache rebuild later, not correctness.
+        }
+      }
+    }
+  }
+  const result = transformRequest(parsed, { ...opts.transform, evict });
   const event: ProxyEvent = {
     path,
     model: parsed.model,
     stats: result.stats,
     ms: performance.now() - started,
+    decay: decayInfo,
   };
   if (!result.changed) return { body, event };
   return { body: Buffer.from(JSON.stringify(result.body), "utf8"), event };
