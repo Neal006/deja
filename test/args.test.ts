@@ -22,6 +22,12 @@ describe("parseArgs", () => {
     expect(parseArgs(["--json", "--port", "1"]).flags).toEqual({ json: true, port: "1" });
   });
 
+  it("never lets a known boolean flag swallow the command", () => {
+    const a = parseArgs(["--uncached", "claude", "-p", "hi"]);
+    expect(a.command).toBe("claude");
+    expect(a.flags.uncached).toBe(true);
+  });
+
   it("parses short flags", () => {
     expect(parseArgs(["-h"]).flags).toEqual({ h: true });
   });

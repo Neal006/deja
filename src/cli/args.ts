@@ -11,7 +11,10 @@ export interface ParsedArgs {
   rest: string[];
 }
 
-export function parseArgs(argv: string[]): ParsedArgs {
+/** Flags that never take a value, so `--quiet claude` keeps `claude` as the command. */
+export const BOOLEAN_FLAGS = new Set(["json", "quiet", "off", "uncached", "quick", "help", "version", "color", "decay"]);
+
+export function parseArgs(argv: string[], booleans: ReadonlySet<string> = BOOLEAN_FLAGS): ParsedArgs {
   const out: ParsedArgs = { command: undefined, positionals: [], flags: {}, rest: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -29,7 +32,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
       const next = argv[i + 1];
       if (name.startsWith("no-")) {
         out.flags[name.slice(3)] = false;
-      } else if (next !== undefined && !next.startsWith("-")) {
+      } else if (!booleans.has(name) && next !== undefined && !next.startsWith("-")) {
         out.flags[name] = next;
         i++;
       } else {
