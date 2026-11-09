@@ -5,7 +5,7 @@ import { summaryLine } from "../src/cli/commands/wrap.js";
 import type { LedgerEntry } from "../src/core/ledger.js";
 
 const DAY = 86_400_000;
-const NOW = 100 * DAY;
+const NOW = 100 * DAY + DAY / 2; // midday, so "a second ago" is still today
 
 function entry(t: number, saved: number): LedgerEntry {
   return { t, toolResults: 2, compressed: 1, tokensBefore: saved * 2, tokensAfter: saved, freshSaved: 0, usd: saved / 1e6 };
