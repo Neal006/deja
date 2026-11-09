@@ -12,6 +12,7 @@ Usage
                                    repeats cost you? (nothing is sent anywhere)
   deja claude [claude args...]     run Claude Code through deja
   deja run -- <cmd> [args...]      run any Anthropic-API agent through deja
+  deja run --openai -- <cmd>       run an OpenAI-compatible agent through deja
   deja start [--port 8787]         run the proxy in the foreground
   deja stats [--since 7d] [--json] show what deja has saved
   deja help | --version
