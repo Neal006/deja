@@ -5,7 +5,8 @@ Start with `deja doctor`. It checks Node, the deja home directory, Claude Code, 
 ## `deja claude` starts, but `deja stats` shows nothing
 
 - Make sure the agent really goes through the proxy: inside the session, `echo $ANTHROPIC_BASE_URL` should print `http://127.0.0.1:<port>`.
-- If you set `ANTHROPIC_BASE_URL` in `~/.claude/settings.json` (`env` block), Claude Code may override the variable deja sets. Remove it from the settings file, or run `deja start` and point that setting at the printed URL.
+- If you set `ANTHROPIC_BASE_URL` in `~/.claude/settings.json` (`env` block), Claude Code may override the variable deja sets. `deja doctor` warns about this. Remove it from the settings file, or run `deja start` and point that setting at the printed URL.
+- `deja claude` prints a line like `deja ⟲ dedup + decay · http://127.0.0.1:41234 → https://api.anthropic.com` when it starts. If you don't see it, you may have passed `--quiet`.
 - `DEJA_HOME` changes where the ledger lives. `deja stats` and the proxy must agree on it.
 
 ## The status line says `deja: off`
