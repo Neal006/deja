@@ -122,7 +122,7 @@ export function transformRequest(body: MessagesRequest, options: TransformOption
       const before = stats.tokensBefore;
       const after = stats.tokensAfter;
       const next = evict.has(result.tool_use_id)
-        ? evictResult(result, label, stats)
+        ? evictResult(result, label, name, stats)
         : rewriteResult(result, label, dict, opts, compressible, stats);
       options.onResult?.({
         tool: name,
@@ -153,9 +153,9 @@ function resultText(result: ToolResultBlock): string {
 }
 
 /** Replace a stale tool result with a stub. Stubs are never indexed. */
-function evictResult(result: ToolResultBlock, label: string, stats: TransformStats): ToolResultBlock {
+function evictResult(result: ToolResultBlock, label: string, tool: string, stats: TransformStats): ToolResultBlock {
   const text = resultText(result);
-  const stub = resultStub(label, text);
+  const stub = resultStub(label, text, tool);
   const before = estimateTokens(text);
   const after = estimateTokens(stub);
   if (after >= before) return result;

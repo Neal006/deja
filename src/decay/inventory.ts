@@ -8,7 +8,7 @@ import { estimateTokens } from "../core/tokens.js";
  */
 
 /** Approximate size of a stub, in tokens. */
-export const RESULT_STUB_TOKENS = 70;
+export const RESULT_STUB_TOKENS = 100;
 export const INPUT_STUB_TOKENS = 30;
 
 export interface Item {
