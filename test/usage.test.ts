@@ -58,4 +58,11 @@ describe("UsageSniffer", () => {
     s.feed('{"id":"c","usage":{"prompt_tokens":50,"completion_tokens":5}}');
     expect(s.finish()).toEqual({ input: 50, cacheRead: 0, cacheWrite: 0, output: 5 });
   });
+
+  it("reads Responses API usage from response.completed", () => {
+    const s = new UsageSniffer();
+    s.feed("event: response.completed\n");
+    s.feed('data: {"type":"response.completed","response":{"usage":{"input_tokens":1000,"input_tokens_details":{"cached_tokens":600},"output_tokens":30}}}\n\n');
+    expect(s.finish()).toEqual({ input: 400, cacheRead: 600, cacheWrite: 0, output: 30 });
+  });
 });

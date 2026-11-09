@@ -21,6 +21,8 @@ interface RawUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
   prompt_tokens_details?: { cached_tokens?: number };
+  // OpenAI Responses style (input_tokens includes cached tokens)
+  input_tokens_details?: { cached_tokens?: number };
   // Anthropic style
   input_tokens?: number;
   cache_read_input_tokens?: number;
@@ -36,7 +38,15 @@ function merge(into: Usage | undefined, raw: RawUsage): Usage {
     u.cacheRead = cached;
   }
   if (typeof raw.completion_tokens === "number") u.output = raw.completion_tokens;
-  if (typeof raw.input_tokens === "number") u.input = raw.input_tokens;
+  if (typeof raw.input_tokens === "number") {
+    const cached = raw.input_tokens_details?.cached_tokens;
+    if (typeof cached === "number") {
+      u.input = raw.input_tokens - cached;
+      u.cacheRead = cached;
+    } else {
+      u.input = raw.input_tokens;
+    }
+  }
   if (typeof raw.cache_read_input_tokens === "number") u.cacheRead = raw.cache_read_input_tokens;
   if (typeof raw.cache_creation_input_tokens === "number") u.cacheWrite = raw.cache_creation_input_tokens;
   if (typeof raw.output_tokens === "number") u.output = raw.output_tokens;
@@ -77,8 +87,8 @@ export class UsageSniffer {
     if (!line.startsWith("data:") || !line.includes('"usage"')) return;
     this.sse = true;
     try {
-      const data = JSON.parse(line.slice(5)) as { message?: { usage?: RawUsage }; usage?: RawUsage };
-      const raw = data.message?.usage ?? data.usage;
+      const data = JSON.parse(line.slice(5)) as { message?: { usage?: RawUsage }; response?: { usage?: RawUsage }; usage?: RawUsage };
+      const raw = data.message?.usage ?? data.response?.usage ?? data.usage;
       if (raw) this.usage = merge(this.usage, raw);
     } catch {
       // Not every data line is JSON we care about.
