@@ -1,6 +1,7 @@
 import { createServer, type IncomingHttpHeaders, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
+import { StateStore } from "../src/decay/store.js";
 import { createProxy, forwardHeaders, isCompressiblePath, rewriteBody, type ProxyEvent } from "../src/proxy/server.js";
 import { code, Conversation, numbered } from "./helpers/conversation.js";
 
@@ -92,6 +93,38 @@ describe("rewriteBody", () => {
     const r = rewriteBody("/v1/messages", {}, raw, {});
     expect(r.body).toBe(raw);
     expect(r.event).toBeDefined();
+  });
+});
+
+describe("rewriteBody with decay", () => {
+  const log = Array.from({ length: 200 }, (_, i) => `PASS test/suite-${i}.test.ts (${i} ms) fine`).join("\n");
+  function aged(turns: number) {
+    const c = new Conversation().tool("Bash", { command: "npm test" }, log);
+    for (let i = 0; i < turns; i++) c.tool("Bash", { command: `echo ${i}` }, "ok");
+    return Buffer.from(JSON.stringify(c.build()));
+  }
+
+  it("evicts stale output and reports it", () => {
+    const store = new StateStore();
+    const r = rewriteBody("/v1/messages", {}, aged(6), { decay: { store, now: () => 0 } });
+    expect(r.event?.decay).toEqual({ reason: "idle", newlyEvicted: 1, evicted: 1 });
+    expect(r.body.toString()).toContain("deja: stale output of Bash `npm test`");
+    expect(store.peek("toolu_0001")?.evicted).toEqual(["toolu_0001"]);
+  });
+
+  it("applies but does not advance decay for count_tokens", () => {
+    const store = new StateStore();
+    store.get("toolu_0001").evicted = ["toolu_0001"];
+    const r = rewriteBody("/v1/messages/count_tokens", {}, aged(1), { decay: { store, now: () => 0 } });
+    expect(r.event?.decay).toBeUndefined();
+    expect(r.body.toString()).toContain("deja: stale output");
+    expect(store.peek("toolu_0001")?.lastSeen).toBeUndefined();
+  });
+
+  it("does nothing to young conversations", () => {
+    const store = new StateStore();
+    const r = rewriteBody("/v1/messages", {}, aged(1), { decay: { store, now: () => 0 } });
+    expect(r.event?.decay?.reason).toBe("none");
   });
 });
 
