@@ -7,6 +7,13 @@ describe("inputPrice", () => {
     expect(inputPrice("claude-sonnet-4-5-20250929", {})).toBe(3);
     expect(inputPrice("claude-haiku-4-5", {})).toBe(1);
   });
+  it("maps OpenAI families, smaller tiers first", () => {
+    expect(inputPrice("gpt-5.1-codex-max", {})).toBe(1.25);
+    expect(inputPrice("gpt-5-mini", {})).toBe(0.25);
+    expect(inputPrice("gpt-5-nano", {})).toBe(0.05);
+    expect(inputPrice("gpt-4.1", {})).toBe(2);
+    expect(inputPrice("gpt-4o-mini", {})).toBe(0.15);
+  });
   it("falls back to the default", () => {
     expect(inputPrice("some-other-model", {})).toBe(DEFAULT_INPUT_PRICE);
     expect(inputPrice(undefined, {})).toBe(DEFAULT_INPUT_PRICE);

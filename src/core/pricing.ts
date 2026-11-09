@@ -12,6 +12,16 @@ const FAMILY_PRICES: Array<[RegExp, number]> = [
   [/opus/i, 5],
   [/sonnet/i, 3],
   [/haiku/i, 1],
+  // OpenAI (estimates; order matters: the smaller tiers first).
+  [/gpt-5[\w.-]*nano/i, 0.05],
+  [/gpt-5[\w.-]*mini/i, 0.25],
+  [/gpt-5|codex/i, 1.25],
+  [/gpt-4\.1[\w.-]*mini/i, 0.4],
+  [/gpt-4\.1/i, 2],
+  [/gpt-4o[\w.-]*mini/i, 0.15],
+  [/gpt-4o/i, 2.5],
+  [/\bo3\b|o3-/i, 2],
+  [/o4-mini/i, 1.1],
 ];
 
 export const DEFAULT_INPUT_PRICE = 3;
