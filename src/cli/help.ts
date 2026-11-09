@@ -40,6 +40,7 @@ Options
   --quick            audit: skip the strategy replay
   --share            audit: print a content-free summary card and badge
   --by-project       audit: add a per-project table
+  --tune             audit: sweep --min-age on your history and recommend one
   --quiet            do not log one line per request (start)
   --log <file>       append a JSON line per request, counts only (start)
 
