@@ -47,6 +47,11 @@ export interface SessionStat {
   targets: Map<string, TargetStat>;
   /** Cache-aware bills per strategy, when replayed. */
   bills?: Partial<StrategyBills>;
+  /**
+   * For each segment that ended in an auto-compaction: the context size at
+   * that moment as recorded, and as it would have been with deja.
+   */
+  compactions: Array<{ baseline: number; deja: number }>;
 }
 
 export interface SimulateOptions extends ReplayOptions {
@@ -71,6 +76,7 @@ export function simulate(t: Transcript, opts: SimulateOptions = {}): SessionStat
     savedSent: 0,
     weightedSaved: 0,
     targets: new Map(),
+    compactions: [],
   };
 
   for (const seg of t.segments) {
@@ -115,6 +121,9 @@ export function simulate(t: Transcript, opts: SimulateOptions = {}): SessionStat
       const bills = replayAll(seg, { ...opts, cwd: t.cwd }, strategies);
       s.bills ??= {};
       for (const k of strategies) s.bills[k] = addBill(s.bills[k] ?? emptyBill(), bills[k]!);
+      if (seg.compacted && bills.baseline && bills.deja && bills.baseline.requests > 0) {
+        s.compactions.push({ baseline: bills.baseline.lastPrompt, deja: bills.deja.lastPrompt });
+      }
     }
   }
   return s;

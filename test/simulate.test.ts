@@ -44,6 +44,14 @@ describe("simulate", () => {
     expect(s.targets.get("Bash `ls`")!.saved).toBe(0);
   });
 
+  it("records context size at compaction points", () => {
+    const t = transcript();
+    t.segments[0]!.compacted = true;
+    const s = simulate(t, { strategies: ["baseline", "deja"] });
+    expect(s.compactions).toHaveLength(1);
+    expect(s.compactions[0]!.deja).toBeLessThanOrEqual(s.compactions[0]!.baseline);
+  });
+
   it("handles an empty transcript", () => {
     const s = simulate({ path: "/x", segments: [] });
     expect(s.requests).toBe(0);
