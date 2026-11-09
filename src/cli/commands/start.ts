@@ -5,8 +5,9 @@ import { dejaHome } from "../../core/ledger.js";
 import { formatTokens } from "../../core/tokens.js";
 import { decayFromEnv, type DecayConfig } from "../../decay/policy.js";
 import { StateStore } from "../../decay/store.js";
+import { appendFileSync } from "node:fs";
 import { removeLive, writeLive } from "../../proxy/live.js";
-import { recorder } from "../../proxy/record.js";
+import { eventRecord, recorder } from "../../proxy/record.js";
 import { createProxy, type ProxyEvent } from "../../proxy/server.js";
 import { flagNumber, flagString, type ParsedArgs } from "../args.js";
 import { paint, useColor } from "../format.js";
@@ -109,6 +110,7 @@ export async function startCommand(args: ParsedArgs): Promise<number> {
   const port = flagNumber(args.flags, "port") ?? Number(process.env.DEJA_PORT ?? DEFAULT_PORT);
   const upstream = resolveUpstream(flagString(args.flags, "upstream"));
   const quiet = args.flags.quiet === true;
+  const logPath = flagString(args.flags, "log");
   const proxy = await startProxy({
     port,
     upstream,
@@ -116,7 +118,16 @@ export async function startCommand(args: ParsedArgs): Promise<number> {
     decay: args.flags.decay !== false,
     decayConfig: decayConfigFromArgs(args),
     skipTools: skipToolsFromArgs(args),
-    onEvent: quiet ? undefined : (e) => process.stderr.write(`${eventLine(e, color)}\n`),
+    onEvent: (e) => {
+      if (!quiet) process.stderr.write(`${eventLine(e, color)}\n`);
+      if (logPath) {
+        try {
+          appendFileSync(logPath, `${JSON.stringify(eventRecord(e))}\n`);
+        } catch {
+          // Logging is best effort.
+        }
+      }
+    },
   });
   process.stderr.write(
     `${p.magenta("deja")} listening on ${p.bold(proxy.url)} → ${upstream}\n` +
