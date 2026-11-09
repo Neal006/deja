@@ -159,3 +159,10 @@ describe("compactions", () => {
     expect(renderAudit(aggregate([session()], { env: {} }), false)).not.toContain("auto-compactions");
   });
 });
+
+describe("uncached reports", () => {
+  it("say that nothing was cached", () => {
+    const out = renderAudit(aggregate([session()], { env: {}, uncached: true }), false);
+    expect(out).toContain("no prompt cache");
+  });
+});

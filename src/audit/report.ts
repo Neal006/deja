@@ -6,6 +6,8 @@ import { addBill, emptyBill, STRATEGIES, type Strategy, type StrategyBills } fro
 import type { SessionStat, TargetStat } from "./simulate.js";
 
 export interface AuditReport {
+  /** Billed as if the provider had no prompt cache. */
+  uncached?: boolean;
   /** Model used for pricing. */
   model?: string;
   sessions: number;
@@ -39,6 +41,7 @@ export interface ProjectRow {
 }
 
 export interface AggregateOptions {
+  uncached?: boolean;
   model?: string;
   top?: number;
   env?: NodeJS.ProcessEnv;
@@ -57,6 +60,7 @@ export function dominantModel(sessions: SessionStat[]): string | undefined {
 export function aggregate(sessions: SessionStat[], opts: AggregateOptions = {}): AuditReport {
   const model = opts.model ?? dominantModel(sessions);
   const r: AuditReport = {
+    ...(opts.uncached ? { uncached: true } : {}),
     model,
     sessions: 0,
     requests: 0,
@@ -170,7 +174,10 @@ export function renderAudit(r: AuditReport, color: boolean): string {
       `  ${p.dim("average prompt")} ${formatTokens(Math.round(base.promptTokens / base.requests))} ${p.dim("→")} ${p.bold(formatTokens(Math.round(deja.promptTokens / deja.requests)))} ${p.dim("tokens")}`,
     );
     out.push("");
-    out.push(p.bold("  replayed under each strategy") + p.dim("  (prompt-cache billing, exact prefix matching)"));
+    out.push(
+      p.bold("  replayed under each strategy") +
+        p.dim(r.uncached ? "  (no prompt cache: every token billed in full)" : "  (prompt-cache billing, exact prefix matching)"),
+    );
     for (const k of STRATEGIES) {
       const b = r.bills[k];
       if (!b) continue;

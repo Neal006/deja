@@ -31,6 +31,7 @@ Options
   --min-age <n>      requests before output counts as stale (default 5)
   --min-saving <n>   smallest eviction worth making, in tokens (default 150)
   --uncached         the upstream has no prompt cache: evict stale output eagerly
+                     (audit: replay as if nothing were cached)
   --skip-tools a,b   never dedup or stub these tools' output
   --quick            audit: skip the strategy replay
   --share            audit: print a content-free summary card and badge
