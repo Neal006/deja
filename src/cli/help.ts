@@ -21,7 +21,8 @@ Options
                      or https://api.anthropic.com)
   --off              forward requests untouched (A/B comparisons)
   --no-decay         dedup only: never stub stale tool output
-  --min-age <n>      audit: requests before output counts as stale (default 5)
+  --min-age <n>      requests before output counts as stale (default 5)
+  --min-saving <n>   smallest eviction worth making, in tokens (default 150)
   --quick            audit: skip the strategy replay
   --quiet            do not log one line per request (start)
 
@@ -29,5 +30,7 @@ Environment
   DEJA_HOME          where the ledger lives (default ~/.deja)
   DEJA_UPSTREAM      same as --upstream
   DEJA_INPUT_PRICE   USD per million input tokens for savings estimates
+  DEJA_MIN_AGE       same as --min-age
+  DEJA_MIN_SAVING    same as --min-saving
   NO_COLOR           disable colors
 `;
