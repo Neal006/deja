@@ -55,7 +55,7 @@ deja is a local proxy between your agent and the Anthropic API (`ANTHROPIC_BASE_
 Each new tool result is compressed against everything already visible in the conversation, LZ77-style, with the conversation itself as the dictionary. When the agent re-reads a file it just edited, only the changed lines go through:
 
 ```
-⟪deja: 212 lines, 205 of them identical to text already visible earlier in this conversation …⟫
+⟪deja: 212 lines; 205 unchanged ones are shown as ⟨references⟩ to identical text still earlier in your context.⟫
   1-39	⟨same as Read src/app.ts lines 1-39⟩
     40	  const retries = 5;
     41	  const backoff = exponential(250);
