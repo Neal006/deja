@@ -181,3 +181,39 @@ export function renderAudit(r: AuditReport, color: boolean): string {
   out.push(`  Stop paying for stale context:  ${p.cyan("npx dejactx claude")}`);
   return out.join("\n");
 }
+
+const REPO = "github.com/Neal006/deja";
+
+/** Pad a string to a display width, counting each code point as one column. */
+function padDisplay(s: string, width: number): string {
+  const len = [...s].length;
+  return len >= width ? s : s + " ".repeat(width - len);
+}
+
+/**
+ * A compact, content-free summary meant to be pasted into a post or README:
+ * a box with the headline numbers and a shields.io badge.
+ */
+export function renderShare(r: AuditReport): string {
+  const base = r.bills.baseline;
+  const deja = r.bills.deja;
+  const eager = r.bills.eager;
+  if (!base || !deja || base.cost <= 0) return "Run `deja audit` without --quick to get a shareable summary.";
+  const cut = 1 - deja.cost / base.cost;
+  const rows = [
+    `deja audit · ${r.sessions} sessions · ${r.requests.toLocaleString("en-US")} requests`,
+    `input bill   ${usd(dollars(r, base.cost))} → ${usd(dollars(r, deja.cost))}  (${signed(cut)})`,
+    `avg prompt   ${formatTokens(Math.round(base.promptTokens / base.requests))} → ${formatTokens(Math.round(deja.promptTokens / deja.requests))} tokens`,
+    ...(eager ? [`eager pruning would have been ${signed(1 - eager.cost / base.cost)}`] : []),
+    REPO,
+  ];
+  const width = Math.max(...rows.map((x) => [...x].length)) + 2;
+  const box = [
+    `┌${"─".repeat(width)}┐`,
+    ...rows.map((x) => `│ ${padDisplay(x, width - 1)}│`),
+    `└${"─".repeat(width)}┘`,
+  ];
+  const pct = `-${(cut * 100).toFixed(1)}%`;
+  const badge = `[![deja](https://img.shields.io/badge/deja-${encodeURIComponent(`${pct} input bill`).replace(/-/g, "--")}-8a2be2)](https://${REPO})`;
+  return [...box, "", badge].join("\n");
+}

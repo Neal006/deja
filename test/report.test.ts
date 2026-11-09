@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregate, dollars, dominantModel, renderAudit } from "../src/audit/report.js";
+import { aggregate, dollars, dominantModel, renderAudit, renderShare } from "../src/audit/report.js";
 import type { Bill } from "../src/audit/billing.js";
 import type { SessionStat } from "../src/audit/simulate.js";
 
@@ -101,5 +101,21 @@ describe("renderAudit", () => {
   it("omits the table without bills", () => {
     const out = renderAudit(aggregate([session({ bills: undefined })], { env: {} }), false);
     expect(out).not.toContain("replayed under each strategy");
+  });
+});
+
+describe("renderShare", () => {
+  it("renders an aligned box and a badge", () => {
+    const out = renderShare(aggregate([session()], { env: {} }));
+    const lines = out.split("\n");
+    const box = lines.filter((l) => l.startsWith("│"));
+    expect(new Set(box.map((l) => [...l].length)).size).toBe(1);
+    expect(out).toContain("input bill   $3.00 → $2.10  (-30.0%)");
+    expect(out).toContain("eager pruning would have been +10.0%");
+    expect(out).toContain("https://img.shields.io/badge/deja---30.0%25%20input%20bill-8a2be2");
+  });
+
+  it("explains itself without bills", () => {
+    expect(renderShare(aggregate([session({ bills: undefined })], { env: {} }))).toContain("without --quick");
   });
 });
