@@ -19,6 +19,8 @@ First release.
 
 ### Measurement
 - `deja audit`: replay local Claude Code history (main sessions and subagents) under four strategies with exact-prefix cache billing, in parallel worker threads. Reports compaction headroom, how often stubbed targets were called again, per-project tables (`--by-project`), a share card (`--share`), cacheless billing (`--uncached`) and a personal staleness sweep with a recommendation (`--tune`).
+- `deja audit --agent codex`: the same replay for Codex CLI rollouts, billed with OpenAI-style caching.
+- Self-calibration: once deja has seen enough real traffic, `deja audit` scales its dollar figures by the measured ratio between the provider's token counts and deja's estimates (`--no-calibrate` to turn off).
 - `deja preview`: show exactly what deja would have sent at any request of a past session.
 - `deja stats`: estimated savings, a 14-day sparkline, provider-measured cache reads and writes, estimator accuracy, stub re-run rate, per-model breakdown (`--by-model`), `--reset`.
 
