@@ -22,6 +22,8 @@ On 48 real Claude Code sessions (2,779 API requests), replayed request by reques
 
 ([Full benchmarks and methodology](docs/benchmarks.md).)
 
+<p align="center"><img src="docs/audit.svg" alt="deja audit output: input bill cut by 30%, eager pruning only 14%" width="760"></p>
+
 Run `npx dejactx audit` to get this table for your own history, and `npx dejactx audit --share` for a card you can post.
 
 ---
