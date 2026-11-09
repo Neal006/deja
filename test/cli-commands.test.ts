@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildReport, byModel, dailySaved, renderModels, renderReport } from "../src/cli/commands/stats.js";
-import { eventLine, skipToolsFromArgs } from "../src/cli/commands/start.js";
+import { eventLine, listenError, skipToolsFromArgs, startProxy } from "../src/cli/commands/start.js";
+import { launchError } from "../src/cli/commands/wrap.js";
 import { parseArgs } from "../src/cli/args.js";
 import { summaryLine } from "../src/cli/commands/wrap.js";
 import type { LedgerEntry } from "../src/core/ledger.js";
@@ -141,5 +142,35 @@ describe("byModel", () => {
 
   it("renders an empty table", () => {
     expect(renderModels([], false)).toContain("No requests");
+  });
+});
+
+describe("launchError", () => {
+  const enoent = Object.assign(new Error("spawn x ENOENT"), { code: "ENOENT" });
+  it("tells you how to install Claude Code", () => {
+    expect(launchError("claude", enoent)).toContain("npm i -g @anthropic-ai/claude-code");
+  });
+  it("asks about PATH for other agents", () => {
+    expect(launchError("aider", enoent)).toContain('Is "aider" installed and on your PATH?');
+  });
+  it("passes other errors through", () => {
+    expect(launchError("x", new Error("boom"))).toBe("deja: could not start x: boom");
+  });
+});
+
+describe("listenError", () => {
+  it("explains a busy port", () => {
+    expect(listenError(8787, Object.assign(new Error("x"), { code: "EADDRINUSE" }))).toContain("--port 0");
+  });
+  it("explains a privileged port", () => {
+    expect(listenError(80, Object.assign(new Error("x"), { code: "EACCES" }))).toContain("above 1024");
+  });
+
+  it("is what startProxy rejects with when the port is taken", async () => {
+    const home = (await import("node:fs")).mkdtempSync((await import("node:path")).join((await import("node:os")).tmpdir(), "deja-port-"));
+    const ledger = (await import("node:path")).join(home, "ledger.jsonl");
+    const first = await startProxy({ port: 0, upstream: "http://127.0.0.1:1", ledger, decay: false });
+    await expect(startProxy({ port: first.port, upstream: "http://127.0.0.1:1", ledger, decay: false })).rejects.toMatchObject({ code: "EADDRINUSE" });
+    await new Promise((r) => first.server.close(r));
   });
 });
