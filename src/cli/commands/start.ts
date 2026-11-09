@@ -43,6 +43,7 @@ export function startProxy(opts: {
     upstream: opts.upstream,
     enabled: opts.enabled,
     transform: opts.skipTools?.length ? { skipTools: opts.skipTools } : undefined,
+    status: () => ({ pid: process.pid, started, ...rec.tally }),
     decay:
       opts.decay === false
         ? undefined
