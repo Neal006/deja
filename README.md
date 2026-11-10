@@ -1,9 +1,11 @@
 # deja
 
+[![npm](https://img.shields.io/npm/v/dejactx?color=8a2be2)](https://www.npmjs.com/package/dejactx)
+[![downloads](https://img.shields.io/npm/dm/dejactx)](#downloads-and-usage)
 [![ci](https://github.com/Neal006/deja/actions/workflows/ci.yml/badge.svg)](https://github.com/Neal006/deja/actions/workflows/ci.yml)
 [![deja](https://img.shields.io/badge/deja---30.7%25%20input%20bill-8a2be2)](#the-problem-nobody-measures)
 ![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
-![license](https://img.shields.io/badge/license-MIT-blue)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 **Your coding agent pays for the same context over and over. deja stops that, and doesn't break your prompt cache doing it.**
 
@@ -205,24 +207,46 @@ Yes. See [docs/ci.md](docs/ci.md) for headless runs and GitHub Actions.
 **Something looks off.**
 See [docs/troubleshooting.md](docs/troubleshooting.md), and run `deja doctor`.
 
+## Downloads and usage
+
+Live numbers, updated automatically (npm counts lag by about a day):
+
+| | |
+|---|---|
+| npm version | [![npm](https://img.shields.io/npm/v/dejactx?color=8a2be2&label=dejactx)](https://www.npmjs.com/package/dejactx) |
+| downloads this week | [![weekly](https://img.shields.io/npm/dw/dejactx)](https://npm-stat.com/charts.html?package=dejactx) |
+| downloads this month | [![monthly](https://img.shields.io/npm/dm/dejactx)](https://npm-stat.com/charts.html?package=dejactx) |
+| downloads, last 18 months | [![total](https://img.shields.io/npm/d18m/dejactx)](https://npm-stat.com/charts.html?package=dejactx) |
+| GitHub stars | [![stars](https://img.shields.io/github/stars/Neal006/deja?style=flat)](https://github.com/Neal006/deja/stargazers) |
+
+- **Daily download chart:** [npm-stat.com/charts.html?package=dejactx](https://npm-stat.com/charts.html?package=dejactx) (pick any date range)
+- **Raw numbers** from npm's API: [last week](https://api.npmjs.org/downloads/point/last-week/dejactx) · [per day, last month](https://api.npmjs.org/downloads/range/last-month/dejactx)
+- **Savings people report:** [savings reports](https://github.com/Neal006/deja/issues?q=label%3Asavings-report) from `deja audit --share`
+
+<a href="https://star-history.com/#Neal006/deja&Date"><img src="https://api.star-history.com/svg?repos=Neal006/deja&type=Date" alt="Star history of Neal006/deja" width="600"></a>
+
 ## Status and roadmap
 
-deja is new (0.1). The engines are fuzz-tested, the cost model is checked against the hindsight optimum, and the proxy has been verified live against the Anthropic API. The audit numbers come from one developer's history, though, so run `npx dejactx audit` on yours and [share the summary](https://github.com/Neal006/deja/issues/new?template=savings_report.md).
+deja 0.1 is [on npm](https://www.npmjs.com/package/dejactx). The engines are fuzz-tested, the cost model is checked against the hindsight optimum, and the proxy has been verified live against the Anthropic API. The audit numbers come from one developer's history, though, so run `npx dejactx audit` on yours and [share the summary](https://github.com/Neal006/deja/issues/new?template=savings_report.md).
 
 Next up:
 
-- `deja audit` for more agents' transcripts (Codex is supported; Cline and OpenCode next)
+- `deja audit` for more agents' transcripts (Claude Code and Codex are supported; Cline and OpenCode next)
 - per-tool stub formats (`git diff`, package managers, test runners)
-- an npm release
+- live A/B mode: send a sample of requests untouched and compare provider-billed cost
 
 ## Development
 
 ```bash
 npm install
-npm test          # vitest
-npm run build     # tsc → dist/
+npm test               # vitest (fuzzing, end-to-end, competitive-ratio checks)
+npm run typecheck      # tsc over src and tests
+npm run build          # tsc → dist/
 node dist/cli.js audit
+npm run bench:quality  # task-success benchmark, deja on vs. off (calls the real API)
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for ground rules and how releases are cut.
 
 The design, with the cost model and the ski-rental analysis, is in [docs/design.md](docs/design.md). The interesting code:
 
