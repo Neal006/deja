@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- `deja audit` now finds and parses each agent's history through an adapter registry (`src/audit/agents/`), so new agents can be added one file at a time. Audit results are unchanged; `--agent` is now case-insensitive, and an agent with no default history folder asks for `--dir`. ([#2](https://github.com/Neal006/deja/pull/2), thanks [@nandinirathod2321](https://github.com/nandinirathod2321))
+
 ## 0.1.0 (2026-11-10)
 
 First release.

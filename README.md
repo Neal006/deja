@@ -256,6 +256,13 @@ The design, with the cost model and the ski-rental analysis, is in [docs/design.
 - `src/audit/billing.ts`: the exact-prefix prompt-cache billing model
 - `src/audit/replay.ts`: strategy replays over real transcripts
 
+## Contributors
+
+- [Neal Daftary](https://github.com/Neal006): creator and maintainer
+- [Nandini Rathod](https://github.com/nandinirathod2321): agent adapter registry for `deja audit` ([#2](https://github.com/Neal006/deja/pull/2))
+
+Want to be on this list? See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 MIT
