@@ -1,7 +1,7 @@
 ---
 name: Share your audit
 about: Post your `deja audit` numbers so we can tune defaults
-labels: data
+labels: savings-report
 ---
 
 Paste the first 12 lines of `npx dejactx audit` (they contain no conversation content):
