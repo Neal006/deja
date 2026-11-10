@@ -30,7 +30,11 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
   const cacheModel = adapter.billing
     ? { writeMultiplier: adapter.billing.writeMultiplier, readMultiplier: adapter.billing.readMultiplier }
     : {};
-  const root = flagString(args.flags, "dir") ?? adapter.defaultDir() ?? process.cwd();
+  const root = flagString(args.flags, "dir") ?? adapter.defaultDir();
+  if (!root) {
+    process.stderr.write("deja: this agent has no default history location, pass --dir\n");
+    return 2;
+  }
   const files = discoverTranscripts(root, {
     since: Date.now() - since,
     match: flagString(args.flags, "project"),

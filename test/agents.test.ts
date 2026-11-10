@@ -1,6 +1,11 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { getAdapter, supportedAgents } from "../src/audit/agents/index.js";
+import { ADAPTERS, type AgentAdapter, getAdapter, supportedAgents } from "../src/audit/agents/index.js";
 import { readAny } from "../src/audit/worker.js";
+import { parseArgs } from "../src/cli/args.js";
+import { auditCommand } from "../src/cli/commands/audit.js";
 
 describe("agent adapter registry", () => {
   it("resolves built-in adapters case-insensitively", () => {
@@ -37,5 +42,58 @@ describe("agent adapter registry", () => {
     expect(() => readAny("some/path", "unknown-agent")).toThrowError(
       /Unknown agent: unknown-agent\. Supported: claude, codex/,
     );
+  });
+
+  it("errors when an adapter has no default directory and --dir is omitted", async () => {
+    const origMap = ADAPTERS as Map<string, AgentAdapter>;
+    origMap.set("no-default", {
+      id: "no-default",
+      name: "No Default",
+      defaultDir: () => undefined,
+      parse: () => ({ path: "", segments: [] }),
+    });
+
+    let stderr = "";
+    const origWrite = process.stderr.write;
+    process.stderr.write = (chunk: unknown) => {
+      stderr += String(chunk);
+      return true;
+    };
+
+    try {
+      const code = await auditCommand(parseArgs(["audit", "--agent", "no-default"]));
+      expect(code).toBe(2);
+      expect(stderr).toContain("this agent has no default history location, pass --dir");
+    } finally {
+      process.stderr.write = origWrite;
+      origMap.delete("no-default");
+    }
+  });
+
+  it("proceeds when an adapter without default directory is provided --dir", async () => {
+    const origMap = ADAPTERS as Map<string, AgentAdapter>;
+    origMap.set("no-default", {
+      id: "no-default",
+      name: "No Default",
+      defaultDir: () => undefined,
+      parse: () => ({ path: "", segments: [] }),
+    });
+
+    let stderr = "";
+    const origWrite = process.stderr.write;
+    process.stderr.write = (chunk: unknown) => {
+      stderr += String(chunk);
+      return true;
+    };
+
+    const emptyDir = mkdtempSync(join(tmpdir(), "deja-empty-"));
+    try {
+      const code = await auditCommand(parseArgs(["audit", "--agent", "no-default", "--dir", emptyDir, "--quick"]));
+      expect(code).toBe(0);
+      expect(stderr).not.toContain("this agent has no default history location, pass --dir");
+    } finally {
+      process.stderr.write = origWrite;
+      origMap.delete("no-default");
+    }
   });
 });

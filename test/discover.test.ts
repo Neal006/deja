@@ -39,6 +39,28 @@ describe("discoverTranscripts", () => {
   it("returns nothing for a missing directory", () => {
     expect(discoverTranscripts("/definitely/not/here")).toEqual([]);
   });
+
+  it("filters by custom extensions when provided and ignores unsupported extensions", () => {
+    const root = mkdtempSync(join(tmpdir(), "deja-ext-"));
+    writeFileSync(join(root, "session.log"), "{}");
+    writeFileSync(join(root, "session.json"), "{}");
+    writeFileSync(join(root, "notes.txt"), "x");
+    writeFileSync(join(root, "data.jsonl"), "{}");
+
+    // Custom extensions list: finds .log and .json, ignores .txt and .jsonl
+    const custom = discoverTranscripts(root, { extensions: [".log", ".json"] });
+    expect(custom).toHaveLength(2);
+    const paths = custom.map((f) => f.path);
+    expect(paths.some((p) => p.endsWith("session.log"))).toBe(true);
+    expect(paths.some((p) => p.endsWith("session.json"))).toBe(true);
+    expect(paths.some((p) => p.endsWith("notes.txt"))).toBe(false);
+    expect(paths.some((p) => p.endsWith("data.jsonl"))).toBe(false);
+
+    // Default discovery ignores .log and .json, only finds .jsonl
+    const def = discoverTranscripts(root);
+    expect(def).toHaveLength(1);
+    expect(def[0]!.path.endsWith("data.jsonl")).toBe(true);
+  });
 });
 
 describe("claudeProjectsDir", () => {
