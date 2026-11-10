@@ -32,11 +32,12 @@ Node 20+ is required. There are no runtime dependencies, so please keep it that 
 | `src/proxy/` | the HTTP proxy, usage sniffing, ledger recording |
 | `src/fetch.ts` | `dejaFetch`, the in-process wrapper |
 | `src/audit/` | transcript parsing, billing model, strategy replay, reports |
+| `src/audit/agents/` | agent adapter registry and transcript parsers |
 | `src/cli/` | commands and formatting |
 
 ## Good first issues
 
-- Support another agent's transcript format in `deja audit` (Cline, OpenCode, aider…; see `src/audit/codex.ts` for a small example)
+- Support another agent's transcript format in `deja audit` (Cline, OpenCode, aider…; see `src/audit/agents/codex.ts` for a small example)
 - Better stubs for specific tools (test runners, package managers, `git diff`)
 - More tasks for the task-success benchmark (`bench/tasks/`)
 

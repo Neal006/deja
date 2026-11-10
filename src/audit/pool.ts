@@ -12,6 +12,8 @@ export interface PoolOptions {
   strategies: readonly Strategy[];
   decay?: DecayConfig;
   billing?: BillingConfig;
+  agent?: string;
+  /** @deprecated Use `agent` instead. Kept for backward compatibility. */
   format?: TranscriptFormat;
   /** Worker threads to use; 1 runs in-process. Defaults to CPUs - 1. */
   jobs?: number;
@@ -26,9 +28,10 @@ function workerPath(): string | undefined {
 
 function serial(paths: string[], opts: PoolOptions): SessionStat[] {
   const out: SessionStat[] = [];
+  const target = opts.agent ?? opts.format ?? "claude";
   paths.forEach((path, i) => {
     try {
-      out.push(simulate(readAny(path, opts.format), { strategies: opts.strategies, decay: opts.decay, billing: opts.billing }));
+      out.push(simulate(readAny(path, target), { strategies: opts.strategies, decay: opts.decay, billing: opts.billing }));
     } catch {
       // One unreadable transcript should not sink the whole audit.
     }
@@ -59,7 +62,14 @@ export async function simulateMany(paths: string[], opts: PoolOptions): Promise<
             return;
           }
           const id = next++;
-          const job: Job = { id, path: paths[id]!, strategies: opts.strategies, decay: opts.decay, billing: opts.billing, format: opts.format };
+          const job: Job = {
+            id,
+            path: paths[id]!,
+            strategies: opts.strategies,
+            decay: opts.decay,
+            billing: opts.billing,
+            agent: opts.agent ?? opts.format ?? "claude",
+          };
           w.postMessage(job);
         };
         w.on("message", (msg: { id: number; stat?: SessionStat }) => {

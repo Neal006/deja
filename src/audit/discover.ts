@@ -15,6 +15,8 @@ export interface DiscoverOptions {
   match?: string;
   /** Hard cap on the number of files, newest first. */
   limit?: number;
+  /** Extensions to match (default: [".jsonl"]). */
+  extensions?: string[];
 }
 
 export interface Found {
@@ -44,7 +46,7 @@ export function discoverTranscripts(root: string, opts: DiscoverOptions = {}): F
       }
       if (st.isDirectory()) {
         walk(p, depth + 1);
-      } else if (name.endsWith(".jsonl")) {
+      } else if ((opts.extensions ?? [".jsonl"]).some((ext) => name.endsWith(ext))) {
         if (opts.since !== undefined && st.mtimeMs < opts.since) continue;
         if (opts.match && !p.includes(opts.match)) continue;
         out.push({ path: p, mtime: st.mtimeMs, size: st.size });
