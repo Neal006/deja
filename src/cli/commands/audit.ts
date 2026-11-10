@@ -1,10 +1,9 @@
-import { claudeProjectsDir, discoverTranscripts } from "../../audit/discover.js";
+import { getAdapter, supportedAgents } from "../../audit/agents/index.js";
+import { discoverTranscripts } from "../../audit/discover.js";
+import { simulateMany } from "../../audit/pool.js";
 import { aggregate, renderAudit, renderProjects, renderShare, renderTune, type TuneRow } from "../../audit/report.js";
 import { STRATEGIES, type Strategy } from "../../audit/replay.js";
-import { simulateMany } from "../../audit/pool.js";
-import { OPENAI_BILLING, UNCACHED_BILLING } from "../../audit/billing.js";
-import { codexSessionsDir } from "../../audit/codex.js";
-import type { TranscriptFormat } from "../../audit/worker.js";
+import { UNCACHED_BILLING } from "../../audit/billing.js";
 import { calibrate } from "../../core/calibration.js";
 import { readEntries } from "../../core/ledger.js";
 import { DEFAULT_DECAY } from "../../decay/policy.js";
@@ -21,19 +20,22 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
     process.stderr.write(`deja: could not parse --since ${sinceFlag} (try 7d, 2w)\n`);
     return 2;
   }
-  const agent = flagString(args.flags, "agent") ?? "claude";
-  if (agent !== "claude" && agent !== "codex") {
-    process.stderr.write(`deja: unknown --agent ${agent} (claude or codex)\n`);
+  const agentFlag = flagString(args.flags, "agent") ?? "claude";
+  const adapter = getAdapter(agentFlag);
+  if (!adapter) {
+    process.stderr.write(`deja: unknown --agent ${agentFlag} (${supportedAgents()})\n`);
     return 2;
   }
-  const format: TranscriptFormat = agent;
-  // Codex runs on OpenAI-style caching: no write premium, cheap reads.
-  const cacheModel = format === "codex" ? { writeMultiplier: OPENAI_BILLING.writeMultiplier, readMultiplier: OPENAI_BILLING.readMultiplier } : {};
-  const root = flagString(args.flags, "dir") ?? (format === "codex" ? codexSessionsDir() : claudeProjectsDir());
+
+  const cacheModel = adapter.billing
+    ? { writeMultiplier: adapter.billing.writeMultiplier, readMultiplier: adapter.billing.readMultiplier }
+    : {};
+  const root = flagString(args.flags, "dir") ?? adapter.defaultDir() ?? process.cwd();
   const files = discoverTranscripts(root, {
     since: Date.now() - since,
     match: flagString(args.flags, "project"),
     limit: flagNumber(args.flags, "limit"),
+    extensions: adapter.extensions,
   });
 
   const color = useColor(process.stdout) && args.flags.color !== false;
@@ -46,8 +48,8 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
         {
           strategies: ["baseline", "deja"],
           decay: { ...DEFAULT_DECAY, ...cacheModel, minAge: age },
-          billing: format === "codex" ? OPENAI_BILLING : undefined,
-          format,
+          billing: adapter.billing,
+          agent: adapter.id,
           jobs: flagNumber(args.flags, "jobs"),
         },
       );
@@ -71,8 +73,8 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
     {
       strategies,
       decay,
-      billing: uncached ? UNCACHED_BILLING : format === "codex" ? OPENAI_BILLING : undefined,
-      format,
+      billing: uncached ? UNCACHED_BILLING : adapter.billing,
+      agent: adapter.id,
       jobs: flagNumber(args.flags, "jobs"),
       onProgress: progress ? (done, total) => process.stderr.write(`\r\x1b[2Kreplaying ${done}/${total}…`) : undefined,
     },
@@ -86,7 +88,7 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
     top: flagNumber(args.flags, "top"),
     uncached,
     calibration,
-    agentName: format === "codex" ? "Codex" : "Claude Code",
+    agentName: adapter.name,
   });
   if (args.flags.share === true) {
     process.stdout.write(`${renderShare(report)}\n`);
