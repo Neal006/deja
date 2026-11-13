@@ -15,6 +15,7 @@ import type { BillingConfig } from "../billing.js";
 import type { Transcript } from "../transcript.js";
 import { claudeAdapter } from "./claude.js";
 import { codexAdapter } from "./codex.js";
+import { clineAdapter } from "./cline.js";
 
 export interface AgentAdapter {
   /** Short identifier used in --agent flag (lowercase, no spaces). */
@@ -43,6 +44,11 @@ export interface AgentAdapter {
    * Default: [".jsonl"]
    */
   extensions?: string[];
+  /**
+   * Exact filename to match (e.g. "api_conversation_history.json").
+   * When specified, only files with this exact name will be parsed.
+   */
+  exactFilename?: string;
 }
 
 /**
@@ -50,7 +56,7 @@ export interface AgentAdapter {
  * The order here determines the order they appear in --help and error messages.
  */
 export const ADAPTERS: ReadonlyMap<string, AgentAdapter> = new Map(
-  [claudeAdapter, codexAdapter].map((a) => [a.id, a]),
+  [claudeAdapter, codexAdapter, clineAdapter].map((a) => [a.id, a]),
 );
 
 /**

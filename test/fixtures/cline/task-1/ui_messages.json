@@ -1,0 +1,4 @@
+[
+  { "ts": 1700000000, "type": "say", "say": "text", "text": "Review src/server.ts" },
+  { "ts": 1700000005, "type": "ask", "ask": "tool", "text": "read_file" }
+]
