@@ -15,6 +15,7 @@ import type { BillingConfig } from "../billing.js";
 import type { Transcript } from "../transcript.js";
 import { claudeAdapter } from "./claude.js";
 import { codexAdapter } from "./codex.js";
+import { antigravityAdapter } from "./antigravity.js";
 
 export interface AgentAdapter {
   /** Short identifier used in --agent flag (lowercase, no spaces). */
@@ -50,7 +51,7 @@ export interface AgentAdapter {
  * The order here determines the order they appear in --help and error messages.
  */
 export const ADAPTERS: ReadonlyMap<string, AgentAdapter> = new Map(
-  [claudeAdapter, codexAdapter].map((a) => [a.id, a]),
+  [claudeAdapter, codexAdapter, antigravityAdapter].map((a) => [a.id, a]),
 );
 
 /**
