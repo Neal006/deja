@@ -40,6 +40,7 @@ export async function auditCommand(args: ParsedArgs): Promise<number> {
     match: flagString(args.flags, "project"),
     limit: flagNumber(args.flags, "limit"),
     extensions: adapter.extensions,
+    exactFilename: adapter.exactFilename,
   });
 
   const color = useColor(process.stdout) && args.flags.color !== false;

@@ -17,6 +17,8 @@ export interface DiscoverOptions {
   limit?: number;
   /** Extensions to match (default: [".jsonl"]). */
   extensions?: string[];
+  /** Exact filename to match (e.g. "api_conversation_history.json"). Overrides extensions when set. */
+  exactFilename?: string;
 }
 
 export interface Found {
@@ -46,7 +48,7 @@ export function discoverTranscripts(root: string, opts: DiscoverOptions = {}): F
       }
       if (st.isDirectory()) {
         walk(p, depth + 1);
-      } else if ((opts.extensions ?? [".jsonl"]).some((ext) => name.endsWith(ext))) {
+      } else if (opts.exactFilename ? name === opts.exactFilename : (opts.extensions ?? [".jsonl"]).some((ext) => name.endsWith(ext))) {
         if (opts.since !== undefined && st.mtimeMs < opts.since) continue;
         if (opts.match && !p.includes(opts.match)) continue;
         out.push({ path: p, mtime: st.mtimeMs, size: st.size });
